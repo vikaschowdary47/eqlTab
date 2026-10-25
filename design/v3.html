@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>eqlShare · V3 The Floor Plan</title>
+    <meta
+      name="description"
+      content="eqlShare design concept V3: your household drawn as a floor plan, each room filling with its share of the bill."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ground: #edf2f0;
+        --surface: #ffffff;
+        --ink: #0b1f1c;
+        --muted: #4a5f5b;
+        --line: #c9d6d2;
+        --wall: #0b1f1c;
+        --accent: #0f766e;
+        --r1: #b9e6de;
+        --r2: #c7ddf5;
+        --r3: #f6ddb4;
+        --r4: #f2cbd3;
+        --ok: #15803d;
+        --warn: #b45309;
+        --err: #b91c1c;
+        --ease: cubic-bezier(0.22, 0.8, 0.2, 1);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ground: #0a1614;
+          --surface: #12221f;
+          --ink: #e6f0ed;
+          --muted: #9db3ae;
+          --line: #24403b;
+          --wall: #e6f0ed;
+          --accent: #2dd4bf;
+          --r1: #1f4d46;
+          --r2: #203d5c;
+          --r3: #5a4220;
+          --r4: #5a2a34;
+          --ok: #4ade80;
+          --warn: #fbbf24;
+          --err: #f87171;
+        }
+      }
+      :root[data-theme="dark"] {
+        --ground: #0a1614;
+        --surface: #12221f;
+        --ink: #e6f0ed;
+        --muted: #9db3ae;
+        --line: #24403b;
+        --wall: #e6f0ed;
+        --accent: #2dd4bf;
+        --r1: #1f4d46;
+        --r2: #203d5c;
+        --r3: #5a4220;
+        --r4: #5a2a34;
+        --ok: #4ade80;
+        --warn: #fbbf24;
+        --err: #f87171;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        background: var(--ground);
+        color: var(--ink);
+        font:
+          400 17px/1.55 "Bricolage Grotesque",
+          system-ui,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .mono {
+        font-family: "DM Mono", monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      a {
+        color: inherit;
+      }
+      .skip {
+        position: absolute;
+        left: -999px;
+        top: 8px;
+        background: var(--ink);
+        color: var(--ground);
+        padding: 8px 12px;
+        border-radius: 8px;
+      }
+      .skip:focus {
+        left: 16px;
+        z-index: 9;
+      }
+      :focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+        border-radius: 8px;
+      }
+      .wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 28px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+      }
+      .logo {
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: -0.03em;
+        text-decoration: none;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .logo svg {
+        width: 26px;
+        height: 26px;
+      }
+      nav {
+        display: flex;
+        gap: 6px;
+        background: var(--surface);
+        padding: 6px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+      }
+      nav a {
+        padding: 8px 16px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-size: 15px;
+        transition:
+          background 0.3s var(--ease),
+          transform 0.3s var(--ease);
+      }
+      nav a:hover {
+        background: var(--ground);
+        transform: translateY(-1px);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font: 600 16px "Bricolage Grotesque";
+        padding: 14px 22px;
+        border-radius: 14px;
+        border: 2px solid var(--ink);
+        background: var(--ink);
+        color: var(--ground);
+        text-decoration: none;
+        cursor: pointer;
+        transition:
+          transform 0.3s var(--ease),
+          box-shadow 0.3s var(--ease);
+      }
+      .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 0 var(--accent);
+      }
+      .btn:active {
+        transform: translateY(0);
+        box-shadow: none;
+      }
+      .btn.out {
+        background: transparent;
+        color: var(--ink);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 40px;
+        align-items: center;
+        padding: 48px 0 72px;
+      }
+      h1 {
+        font-size: clamp(48px, 7.2vw, 112px);
+        font-weight: 800;
+        line-height: 0.88;
+        letter-spacing: -0.055em;
+      }
+      h1 span {
+        display: block;
+      }
+      h1 .t {
+        color: var(--accent);
+      }
+      .lede {
+        font-size: 20px;
+        color: var(--muted);
+        max-width: 32ch;
+        margin: 24px 0 32px;
+      }
+      .plan-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 22px;
+      }
+      .plan-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .plan-top h2 {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .seg {
+        display: flex;
+        background: var(--ground);
+        border-radius: 12px;
+        padding: 4px;
+      }
+      .seg button {
+        border: 0;
+        background: none;
+        font: 500 14px "Bricolage Grotesque";
+        color: var(--muted);
+        padding: 8px 12px;
+        border-radius: 9px;
+        cursor: pointer;
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--surface);
+        color: var(--ink);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      }
+      svg.plan {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .room rect.fill {
+        transition: transform 1s var(--ease);
+        transform-box: fill-box;
+        transform-origin: bottom;
+      }
+      .room text {
+        font-family: "DM Mono";
+        fill: var(--ink);
+      }
+      .room .nm {
+        font: 600 15px "Bricolage Grotesque";
+        fill: var(--ink);
+      }
+      .legend {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+      .legend i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: -1px;
+        border: 1.5px solid var(--ink);
+      }
+      .plan-sum {
+        margin-top: 10px;
+        font-size: 14px;
+      }
+
+      section {
+        padding: 96px 0;
+      }
+      h2.big {
+        font-size: clamp(36px, 5vw, 72px);
+        font-weight: 800;
+        line-height: 0.95;
+        letter-spacing: -0.045em;
+        max-width: 15ch;
+      }
+      .rooms-steps {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 4px;
+        margin-top: 48px;
+        background: var(--wall);
+        border: 4px solid var(--wall);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .rooms-steps article {
+        background: var(--surface);
+        padding: 32px;
+        min-height: 220px;
+        transition: background 0.4s var(--ease);
+      }
+      .rooms-steps article:hover {
+        background: var(--r1);
+      }
+      .rooms-steps article:first-child {
+        grid-row: span 2;
+        background: var(--r1);
+      }
+      .rooms-steps article:first-child:hover {
+        background: var(--r2);
+      }
+      .rooms-steps .mono {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .rooms-steps h3 {
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin: 10px 0;
+      }
+      .rooms-steps article:first-child h3 {
+        font-size: clamp(32px, 3.6vw, 48px);
+      }
+      .rooms-steps p {
+        color: var(--muted);
+      }
+      .rooms-steps article:last-child {
+        grid-column: 2/4;
+      }
+
+      .screens {
+        display: flex;
+        gap: 24px;
+        margin-top: 48px;
+        overflow-x: auto;
+        padding-bottom: 12px;
+        scroll-snap-type: x mandatory;
+      }
+      .screens figure {
+        flex: 0 0 320px;
+        scroll-snap-align: start;
+      }
+      .ph {
+        background: var(--surface);
+        border-radius: 32px;
+        border: 1px solid var(--line);
+        padding: 20px 16px 0;
+        height: 620px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: transform 0.5s var(--ease);
+      }
+      .ph:hover {
+        transform: rotate(-1deg) translateY(-6px);
+      }
+      .ph-t {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      .ph h4 {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 12px;
+      }
+      .mini-plan {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        grid-template-rows: 70px 70px;
+        gap: 3px;
+        background: var(--wall);
+        border: 3px solid var(--wall);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 14px;
+      }
+      .mini-plan div {
+        padding: 8px;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .mini-plan b {
+        font: 500 15px "DM Mono";
+      }
+      .it {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 14px;
+        background: var(--ground);
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      .it small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .st {
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        gap: 5px;
+        align-items: center;
+        white-space: nowrap;
+      }
+      .st.ok {
+        color: var(--ok);
+      }
+      .st.rep {
+        color: var(--warn);
+      }
+      .st.err {
+        color: var(--err);
+      }
+      .add {
+        background: var(--accent);
+        color: #fff;
+        text-align: center;
+        font-weight: 600;
+        border-radius: 14px;
+        padding: 13px;
+        margin: 6px 0 10px;
+      }
+      .tabs {
+        margin-top: auto;
+        display: flex;
+        justify-content: space-around;
+        border-top: 1px solid var(--line);
+        padding: 12px 0 16px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .tabs .on {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .big-amt {
+        font: 500 44px/1 "DM Mono";
+        letter-spacing: -0.04em;
+        margin: 6px 0 4px;
+      }
+      .skel {
+        height: 56px;
+        border-radius: 14px;
+        background: linear-gradient(
+          90deg,
+          var(--ground),
+          var(--line),
+          var(--ground)
+        );
+        background-size: 200% 100%;
+        animation: sh 1.4s linear infinite;
+        margin-bottom: 8px;
+      }
+      @keyframes sh {
+        to {
+          background-position: -200% 0;
+        }
+      }
+      .banner {
+        border: 2px solid var(--err);
+        color: var(--err);
+        border-radius: 14px;
+        padding: 12px;
+        font-size: 13.5px;
+        margin-bottom: 12px;
+      }
+      .cap {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+
+      .faq {
+        display: grid;
+        grid-template-columns: 1fr 1.4fr;
+        gap: 48px;
+      }
+      details {
+        border-top: 2px solid var(--ink);
+        padding: 18px 0;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 21px;
+        letter-spacing: -0.01em;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+      }
+      summary::after {
+        content: "→";
+        transition: transform 0.35s var(--ease);
+      }
+      details[open] summary::after {
+        transform: rotate(90deg);
+      }
+      details p {
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .door {
+        background: var(--ink);
+        color: var(--ground);
+        border-radius: 32px;
+        padding: 72px 48px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 32px;
+        align-items: end;
+      }
+      .door h2 {
+        color: var(--ground);
+      }
+      .door form {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .door input {
+        border: 2px solid var(--ground);
+        background: transparent;
+        color: var(--ground);
+        border-radius: 14px;
+        padding: 14px 16px;
+        font: 16px "Bricolage Grotesque";
+        min-width: 240px;
+      }
+      .door .btn {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      footer {
+        padding: 36px 0;
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        color: var(--muted);
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .vh {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
+
+      @media (max-width: 960px) {
+        .wrap {
+          padding: 0 16px;
+        }
+        nav {
+          display: none;
+        }
+        .hero,
+        .faq,
+        .door {
+          grid-template-columns: 1fr;
+        }
+        .rooms-steps {
+          grid-template-columns: 1fr;
+        }
+        .rooms-steps article:first-child {
+          grid-row: auto;
+        }
+        .rooms-steps article:last-child {
+          grid-column: auto;
+        }
+        .door {
+          padding: 40px 22px;
+        }
+        .door input {
+          min-width: 0;
+          flex: 1;
+        }
+        section {
+          padding: 64px 0;
+        }
+        .screens figure {
+          flex-basis: 290px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="wrap">
+      <header>
+        <a class="logo" href="#" aria-label="eqlShare home"
+          ><svg viewBox="0 0 26 26" aria-hidden="true">
+            <rect
+              x="2"
+              y="2"
+              width="22"
+              height="22"
+              rx="4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            />
+            <path
+              d="M13 2v22M2 13h11"
+              stroke="currentColor"
+              stroke-width="2.5"
+            /></svg
+          >eqlshare</a
+        >
+        <nav aria-label="Primary">
+          <a href="#how">How it works</a><a href="#app">App</a
+          ><a href="#faq">FAQ</a>
+        </nav>
+        <a class="btn out" href="#join">Early access</a>
+      </header>
+      <main id="main">
+        <div class="hero">
+          <div>
+            <h1>
+              <span>Shared bills.</span><span class="t">Fair shares.</span
+              ><span>No chasing.</span>
+            </h1>
+            <p class="lede">
+              Your place, drawn as a floor plan. Each bill fills every room with
+              that person's share, and you can see at a glance who has settled.
+            </p>
+            <a class="btn" href="#join">Get early access</a>
+          </div>
+          <div class="plan-card">
+            <div class="plan-top">
+              <h2>
+                Maple Apartment · <span id="billname">Electricity $200.00</span>
+              </h2>
+              <div class="seg" role="group" aria-label="Choose bill">
+                <button aria-pressed="true" data-b="0">Electricity</button
+                ><button aria-pressed="false" data-b="1">Internet</button
+                ><button aria-pressed="false" data-b="2">Rent (custom)</button>
+              </div>
+            </div>
+            <svg
+              class="plan"
+              viewBox="0 0 600 380"
+              role="img"
+              aria-labelledby="plan-desc"
+            >
+              <desc id="plan-desc">
+                Floor plan with four rooms. Each room shows one roommate's share
+                and its status.
+              </desc>
+              <defs>
+                <pattern
+                  id="hatch"
+                  width="8"
+                  height="8"
+                  patternUnits="userSpaceOnUse"
+                  patternTransform="rotate(45)"
+                >
+                  <line
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="8"
+                    stroke="var(--ink)"
+                    stroke-width="1.5"
+                    opacity=".35"
+                  />
+                </pattern>
+              </defs>
+              <g id="rooms"></g>
+              <path
+                d="M8 8H592V372H8Z M330 8V372 M8 200H330 M330 230H592"
+                fill="none"
+                stroke="var(--wall)"
+                stroke-width="7"
+                stroke-linejoin="round"
+              />
+              <path d="M150 372h70" stroke="var(--surface)" stroke-width="9" />
+              <path
+                d="M150 372 a70 70 0 0 1 70 -70"
+                fill="none"
+                stroke="var(--muted)"
+                stroke-dasharray="4 4"
+              />
+              <text
+                x="160"
+                y="362"
+                font-family="DM Mono"
+                font-size="11"
+                fill="var(--muted)"
+              >
+                door
+              </text>
+            </svg>
+            <div class="legend">
+              <span><i style="background: var(--surface)"></i>Owes</span
+              ><span
+                ><svg
+                  width="12"
+                  height="12"
+                  aria-hidden="true"
+                  style="margin-right: 6px; vertical-align: -1px"
+                >
+                  <rect
+                    width="12"
+                    height="12"
+                    rx="3"
+                    fill="url(#hatch)"
+                    stroke="var(--ink)"
+                    stroke-width="1.5"
+                  /></svg
+                >Hatched = reported paid</span
+              ><span>✓ = confirmed received</span>
+            </div>
+            <p class="plan-sum mono" id="plansum" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <section id="how">
+          <h2 class="big">
+            Set up your place once. After that it runs itself.
+          </h2>
+          <div class="rooms-steps">
+            <article>
+              <span class="mono">The household</span>
+              <h3>Draw your home</h3>
+              <p>
+                Create "Maple Apartment" and send one invite link to each
+                roommate. Links expire and you can revoke them. Once someone
+                joins, their room appears on the plan.
+              </p>
+            </article>
+            <article>
+              <span class="mono">The bill</span>
+              <h3>Pour it in</h3>
+              <p>
+                Enter the total. Split it evenly or set custom amounts. The plan
+                won't save unless the shares add up exactly.
+              </p>
+            </article>
+            <article>
+              <span class="mono">The settle</span>
+              <h3>Watch it clear</h3>
+              <p>
+                When a roommate records a payment, their room gets hatched. When
+                you confirm it, it gets a check.
+              </p>
+            </article>
+            <article>
+              <span class="mono">Next month</span>
+              <h3>Recurring bills wait for you</h3>
+              <p>
+                The Internet bill shows up as a draft each cycle. You check the
+                amount before anyone sees a new share, so nobody gets charged
+                twice and no stale numbers carry over.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section id="app">
+          <h2 class="big">Five screens. Each one answers one question.</h2>
+          <div
+            class="screens"
+            tabindex="0"
+            aria-label="App screens, scroll horizontally"
+          >
+            <figure>
+              <div
+                class="ph"
+                role="img"
+                aria-label="Home screen with floor plan summary"
+              >
+                <div class="ph-t">
+                  <span>Maple Apartment</span><span>JL</span>
+                </div>
+                <h4>Hi Jordan</h4>
+                <div class="mini-plan">
+                  <div style="background: var(--r1)">Priya<b>paid $200</b></div>
+                  <div style="background: var(--r2)">You<b>$50.00</b></div>
+                  <div style="background: var(--r3)">Marcus<b>✓</b></div>
+                  <div style="background: var(--r4)">Sam<b>$50.00</b></div>
+                </div>
+                <div class="it">
+                  <span
+                    ><b>You owe Priya</b
+                    ><small>Electricity · due Oct 28</small></span
+                  ><span class="mono">$50.00</span>
+                </div>
+                <div class="add">Record payment</div>
+                <div class="it">
+                  <span>Gas<small>You reported $28.50</small></span
+                  ><span class="st rep">◐ Reported</span>
+                </div>
+                <div class="tabs">
+                  <span class="on">Home</span><span>Bills</span
+                  ><span>Members</span><span>Settings</span>
+                </div>
+              </div>
+              <figcaption class="cap">
+                Home. Your own room is labeled "You".
+              </figcaption>
+            </figure>
+            <figure>
+              <div
+                class="ph"
+                role="img"
+                aria-label="Record payment confirmation sheet"
+              >
+                <div class="ph-t"><span>← Back</span><span></span></div>
+                <h4>Record payment</h4>
+                <p style="color: var(--muted); font-size: 14px">
+                  To Priya Raman for Electricity · Oct
+                </p>
+                <div class="big-amt">$50.00</div>
+                <p
+                  style="
+                    font-size: 13px;
+                    color: var(--muted);
+                    margin-bottom: 14px;
+                  "
+                >
+                  Full share · or enter a partial amount
+                </p>
+                <div class="it">
+                  <span
+                    >Paid with<small
+                      >Venmo, cash, Zelle… (your note)</small
+                    ></span
+                  ><span>›</span>
+                </div>
+                <div
+                  class="it"
+                  style="
+                    background: transparent;
+                    border: 1.5px dashed var(--line);
+                  "
+                >
+                  <span style="font-size: 13px"
+                    >This tells Priya you paid. Priya confirms it once the money
+                    arrives. eqlShare doesn't move money.</span
+                  >
+                </div>
+                <div class="add">Report $50.00 as paid</div>
+                <div class="tabs">
+                  <span class="on">Home</span><span>Bills</span
+                  ><span>Members</span><span>Settings</span>
+                </div>
+              </div>
+              <figcaption class="cap">
+                Reporting a payment. There's no fake "Pay now" button.
+              </figcaption>
+            </figure>
+            <figure>
+              <div
+                class="ph"
+                role="img"
+                aria-label="Members screen with pending invite and moved out member"
+              >
+                <div class="ph-t">
+                  <span>Maple Apartment</span><span></span>
+                </div>
+                <h4>Members</h4>
+                <div class="it">
+                  <span><b>Priya Raman</b><small>Owner</small></span
+                  ><span class="st ok">● Active</span>
+                </div>
+                <div class="it">
+                  <span><b>Marcus Okonkwo-Bell</b><small>Member</small></span
+                  ><span class="st ok">● Active</span>
+                </div>
+                <div class="it">
+                  <span
+                    ><b>Alexandria Montgomery</b
+                    ><small>Left Sep 30 · $12.40 still open</small></span
+                  ><span class="st" style="color: var(--muted)"
+                    >○ Inactive</span
+                  >
+                </div>
+                <div
+                  class="it"
+                  style="border: 1.5px dashed var(--line); background: none"
+                >
+                  <span
+                    ><b>sam.k@…</b><small>Invite expires in 6 days</small></span
+                  ><span class="st rep">Pending</span>
+                </div>
+                <div class="add">Invite roommate</div>
+                <div class="tabs">
+                  <span>Home</span><span>Bills</span
+                  ><span class="on">Members</span><span>Settings</span>
+                </div>
+              </div>
+              <figcaption class="cap">
+                Members. A roommate who moves out keeps their history.
+              </figcaption>
+            </figure>
+            <figure>
+              <div
+                class="ph"
+                role="img"
+                aria-label="Loading and offline error states"
+              >
+                <div class="ph-t"><span>Bills</span><span></span></div>
+                <h4>Bills</h4>
+                <div class="banner" role="status">
+                  You're offline. Changes are paused and nothing has been saved
+                  twice.
+                </div>
+                <div class="skel"></div>
+                <div class="skel"></div>
+                <div class="skel" style="width: 70%"></div>
+                <div class="tabs">
+                  <span>Home</span><span class="on">Bills</span
+                  ><span>Members</span><span>Settings</span>
+                </div>
+              </div>
+              <figcaption class="cap">Loading and offline states.</figcaption>
+            </figure>
+            <figure>
+              <div class="ph" role="img" aria-label="Permission denied state">
+                <div class="ph-t"><span></span><span></span></div>
+                <div
+                  style="margin: auto 0; text-align: center; padding: 0 10px"
+                >
+                  <svg
+                    width="90"
+                    height="90"
+                    viewBox="0 0 90 90"
+                    aria-hidden="true"
+                  >
+                    <rect
+                      x="8"
+                      y="8"
+                      width="74"
+                      height="74"
+                      rx="8"
+                      fill="none"
+                      stroke="var(--ink)"
+                      stroke-width="5"
+                    />
+                    <path
+                      d="M45 8v74M8 45h37"
+                      stroke="var(--ink)"
+                      stroke-width="5"
+                    />
+                    <rect
+                      x="50"
+                      y="50"
+                      width="28"
+                      height="28"
+                      fill="url(#hatch)"
+                    />
+                  </svg>
+                  <h4 style="margin-top: 16px">This room is locked</h4>
+                  <p style="color: var(--muted); font-size: 14px">
+                    This invite expired or was revoked. Ask the household owner
+                    to send a new one.
+                  </p>
+                </div>
+                <div class="add">Back to my households</div>
+                <div style="height: 16px"></div>
+              </div>
+              <figcaption class="cap">
+                Permission denied. It fails safely and doesn't reveal any
+                household details.
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section id="faq" class="faq">
+          <h2 class="big">House rules.</h2>
+          <div>
+            <details open>
+              <summary>Does eqlShare handle the money?</summary>
+              <p>
+                No. There are no bank links, no cards and no transfers. You pay
+                each other however you like, and eqlShare keeps a record
+                everyone agrees on.
+              </p>
+            </details>
+            <details>
+              <summary>How are odd cents split?</summary>
+              <p>
+                $137.01 split three ways is $45.67 each. $100.00 split three
+                ways is $33.34, $33.33 and $33.33, and the extra cent goes to
+                the same person every time.
+              </p>
+            </details>
+            <details>
+              <summary>Can my landlord or a stranger see our bills?</summary>
+              <p>
+                No. Only household members can see them, and access is checked
+                on the server for every request.
+              </p>
+            </details>
+            <details>
+              <summary>What if I disagree with my share?</summary>
+              <p>
+                Mark it disputed and leave a note. The history stays as it was
+                until someone edits the bill, and every edit is logged.
+              </p>
+            </details>
+          </div>
+        </section>
+
+        <section id="join">
+          <div class="door">
+            <h2 class="big">The first five households get keys.</h2>
+            <form
+              onsubmit="event.preventDefault();this.innerHTML='<p>You are on the list.</p>'"
+            >
+              <label class="vh" for="em">Email</label
+              ><input
+                id="em"
+                type="email"
+                required
+                placeholder="you@email.com"
+                autocomplete="email"
+              /><button class="btn">Join the beta</button>
+            </form>
+          </div>
+        </section>
+      </main>
+      <footer>
+        <span>© 2026 eqlShare</span
+        ><span
+          ><a href="#">Privacy</a> · <a href="#">Terms</a> ·
+          <a href="#">Support</a></span
+        >
+      </footer>
+    </div>
+    <script>
+      const R = [
+        { n: "Priya", x: 8, y: 8, w: 322, h: 192, c: "--r1" },
+        { n: "Marcus", x: 330, y: 8, w: 262, h: 222, c: "--r2" },
+        { n: "Jordan", x: 8, y: 200, w: 322, h: 172, c: "--r3" },
+        { n: "Sam", x: 330, y: 230, w: 262, h: 142, c: "--r4" },
+      ];
+      const B = [
+        {
+          t: "Electricity",
+          c: 20000,
+          s: [5000, 5000, 5000, 5000],
+          st: ["own", "ok", "rep", "owe"],
+        },
+        {
+          t: "Internet",
+          c: 8000,
+          s: [2000, 2000, 2000, 2000],
+          st: ["own", "owe", "owe", "rep"],
+        },
+        {
+          t: "Rent (custom)",
+          c: 280000,
+          s: [80000, 75000, 70000, 55000],
+          st: ["own", "ok", "ok", "rep"],
+        },
+      ];
+      const fmt = (c) =>
+        "$" + (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2 });
+      const lab = {
+        own: "paid upfront",
+        ok: "✓ confirmed",
+        rep: "◐ reported",
+        owe: "owes",
+      };
+      function draw(i) {
+        const b = B[i],
+          max = Math.max(...b.s);
+        document.getElementById("billname").textContent = `${b.t.replace(
+          " (custom)",
+          "",
+        )} ${fmt(b.c)}`;
+        document.getElementById("rooms").innerHTML = R.map((r, k) => {
+          const f = b.s[k] / max,
+            st = b.st[k];
+          return `<g class="room"><rect x="${r.x}" y="${r.y}" width="${
+            r.w
+          }" height="${r.h}" fill="var(--surface)"/>
+    <rect class="fill" x="${r.x}" y="${r.y}" width="${r.w}" height="${
+      r.h
+    }" fill="var(${r.c})" style="transform:scaleY(${
+      st === "owe" ? f * 0.35 : f
+    })"/>
+    ${
+      st === "rep"
+        ? `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="url(#hatch)"/>`
+        : ""
+    }
+    <text class="nm" x="${r.x + 22}" y="${r.y + 34}">${r.n}</text>
+    <text x="${r.x + 22}" y="${r.y + 62}" font-size="22">${fmt(b.s[k])}</text>
+    <text x="${r.x + 22}" y="${r.y + 86}" font-size="12">${lab[st]}</text></g>`;
+        }).join("");
+        const sum = b.s.reduce((a, c) => a + c, 0);
+        document.getElementById("plansum").textContent = `${b.s
+          .map(fmt)
+          .join(" + ")} = ${fmt(sum)} ${
+          sum === b.c ? "✓ every cent is assigned" : "✗ doesn't add up"
+        }`;
+      }
+      document.querySelectorAll(".seg button").forEach(
+        (btn) =>
+          (btn.onclick = () => {
+            document
+              .querySelectorAll(".seg button")
+              .forEach((x) => x.setAttribute("aria-pressed", x === btn));
+            draw(+btn.dataset.b);
+          }),
+      );
+      draw(0);
+    </script>
+  </body>
+</html>

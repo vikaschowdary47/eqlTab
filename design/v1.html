@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>eqlShare · V1 The Equal Line</title>
+    <meta
+      name="description"
+      content="eqlShare design concept V1: every bill becomes one line, cut into exact shares down to the cent."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ground: #f8fafc;
+        --surface: #ffffff;
+        --ink: #0f172a;
+        --muted: #475569;
+        --line: #e2e8f0;
+        --accent: #0f766e;
+        --accent-soft: #ccfbf1;
+        --success: #15803d;
+        --warning: #b45309;
+        --error: #b91c1c;
+        --seg1: #0f766e;
+        --seg2: #14b8a6;
+        --seg3: #5eead4;
+        --seg4: #99f6e4;
+        --r: 14px;
+        --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ground: #0b1220;
+          --surface: #111a2e;
+          --ink: #e8eef7;
+          --muted: #9aa8bd;
+          --line: #22304a;
+          --accent: #2dd4bf;
+          --accent-soft: #0f3b38;
+          --success: #4ade80;
+          --warning: #fbbf24;
+          --error: #f87171;
+          --seg1: #2dd4bf;
+          --seg2: #14b8a6;
+          --seg3: #0f766e;
+          --seg4: #115e59;
+        }
+      }
+      :root[data-theme="dark"] {
+        --ground: #0b1220;
+        --surface: #111a2e;
+        --ink: #e8eef7;
+        --muted: #9aa8bd;
+        --line: #22304a;
+        --accent: #2dd4bf;
+        --accent-soft: #0f3b38;
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --error: #f87171;
+        --seg1: #2dd4bf;
+        --seg2: #14b8a6;
+        --seg3: #0f766e;
+        --seg4: #115e59;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        background: var(--ground);
+        color: var(--ink);
+        font:
+          400 17px/1.55 "Inter Tight",
+          system-ui,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .mono {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      a {
+        color: inherit;
+      }
+      .skip {
+        position: absolute;
+        left: -999px;
+        top: 8px;
+        background: var(--ink);
+        color: var(--ground);
+        padding: 8px 12px;
+        border-radius: 8px;
+      }
+      .skip:focus {
+        left: 16px;
+        z-index: 9;
+      }
+      :focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+        border-radius: 6px;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 0;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+        text-decoration: none;
+      }
+      .logo i {
+        display: grid;
+        gap: 4px;
+        width: 22px;
+      }
+      .logo i b {
+        height: 4px;
+        background: var(--accent);
+        border-radius: 2px;
+      }
+      nav ul {
+        display: flex;
+        gap: 28px;
+        list-style: none;
+        padding: 0;
+        font-size: 15px;
+      }
+      nav a {
+        text-decoration: none;
+        color: var(--muted);
+        position: relative;
+      }
+      nav a::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -4px;
+        height: 2px;
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.35s var(--ease);
+      }
+      nav a:hover {
+        color: var(--ink);
+      }
+      nav a:hover::after {
+        transform: scaleX(1);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 0;
+        cursor: pointer;
+        font: 600 16px/1 inherit;
+        font-family: inherit;
+        padding: 15px 22px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--ground);
+        text-decoration: none;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s var(--ease);
+      }
+      .btn span {
+        position: relative;
+        z-index: 1;
+      }
+      .btn::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--accent);
+        transform: translateX(-101%);
+        transition: transform 0.45s var(--ease);
+      }
+      .btn:hover::before {
+        transform: none;
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--ink);
+        box-shadow: inset 0 0 0 1.5px var(--line);
+      }
+      .btn.ghost::before {
+        background: var(--accent-soft);
+      }
+
+      /* HERO */
+      .hero {
+        padding: 72px 0 56px;
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 56px;
+        align-items: center;
+      }
+      h1 {
+        font-size: clamp(46px, 7.4vw, 104px);
+        line-height: 0.92;
+        letter-spacing: -0.045em;
+        font-weight: 600;
+      }
+      h1 em {
+        font-style: normal;
+        color: var(--accent);
+      }
+      .lede {
+        font-size: clamp(18px, 1.6vw, 21px);
+        color: var(--muted);
+        max-width: 30ch;
+        margin: 28px 0 36px;
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .splitter {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 28px;
+        box-shadow: 0 30px 60px -40px rgba(15, 23, 42, 0.35);
+      }
+      .splitter label {
+        font-size: 13px;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 6px;
+      }
+      .amt {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        border-bottom: 2px solid var(--line);
+        padding-bottom: 6px;
+        margin-bottom: 22px;
+      }
+      .amt:focus-within {
+        border-color: var(--accent);
+      }
+      .amt span {
+        font-size: 40px;
+        color: var(--muted);
+      }
+      .amt input {
+        font:
+          500 56px/1 "JetBrains Mono",
+          monospace;
+        letter-spacing: -0.04em;
+        border: 0;
+        background: none;
+        color: var(--ink);
+        width: 100%;
+        outline: none;
+      }
+      .people {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+      }
+      .people button {
+        font: 500 15px "Inter Tight";
+        padding: 9px 16px;
+        border-radius: 999px;
+        border: 1.5px solid var(--line);
+        background: none;
+        color: var(--ink);
+        cursor: pointer;
+        transition: all 0.25s var(--ease);
+      }
+      .people button[aria-pressed="true"] {
+        background: var(--ink);
+        color: var(--ground);
+        border-color: var(--ink);
+      }
+      .people button:hover {
+        transform: translateY(-2px);
+      }
+      .bar {
+        display: flex;
+        gap: 4px;
+        height: 64px;
+        margin-bottom: 18px;
+      }
+      .bar div {
+        flex: 1;
+        border-radius: 10px;
+        transform-origin: left;
+        animation: grow 0.7s var(--ease) both;
+      }
+      .bar div:nth-child(1) {
+        background: var(--seg1);
+      }
+      .bar div:nth-child(2) {
+        background: var(--seg2);
+      }
+      .bar div:nth-child(3) {
+        background: var(--seg3);
+      }
+      .bar div:nth-child(4) {
+        background: var(--seg4);
+      }
+      .bar div:nth-child(n + 5) {
+        background: var(--seg2);
+      }
+      @keyframes grow {
+        from {
+          transform: scaleX(0.2);
+          opacity: 0;
+        }
+      }
+      .shares {
+        list-style: none;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+      .shares li {
+        display: flex;
+        justify-content: space-between;
+        font-size: 15px;
+        padding: 8px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .check {
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--success);
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      /* SECTIONS */
+      section {
+        padding: 96px 0;
+      }
+      h2 {
+        font-size: clamp(34px, 4.6vw, 60px);
+        line-height: 1;
+        letter-spacing: -0.035em;
+        font-weight: 600;
+        max-width: 18ch;
+      }
+      .steps {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        margin-top: 56px;
+        border-top: 1px solid var(--line);
+      }
+      .steps article {
+        padding: 28px 28px 0 0;
+        border-right: 1px solid var(--line);
+      }
+      .steps article + article {
+        padding-left: 28px;
+      }
+      .steps article:last-child {
+        border: 0;
+      }
+      .steps .n {
+        font: 500 13px "JetBrains Mono";
+        color: var(--accent);
+      }
+      .steps h3 {
+        font-size: 24px;
+        letter-spacing: -0.02em;
+        margin: 10px 0 8px;
+        font-weight: 600;
+      }
+      .steps p {
+        color: var(--muted);
+      }
+
+      /* APP SCREENS */
+      .screens {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+        margin-top: 56px;
+        align-items: start;
+      }
+      .phone {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 34px;
+        padding: 22px 18px 0;
+        min-height: 600px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 40px 80px -60px rgba(15, 23, 42, 0.5);
+        transition: transform 0.5s var(--ease);
+      }
+      .phone:hover {
+        transform: translateY(-8px);
+      }
+      .cap {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 14px;
+      }
+      .ph-top {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 18px;
+      }
+      .ph h4 {
+        font-size: 22px;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+        margin-bottom: 14px;
+      }
+      .tile {
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 10px;
+        border: 1px solid var(--line);
+      }
+      .tile.owe {
+        background: var(--ink);
+        color: var(--ground);
+        border: 0;
+      }
+      .tile small {
+        font-size: 12px;
+        opacity: 0.75;
+        display: block;
+      }
+      .tile .big {
+        font: 500 32px/1.1 "JetBrains Mono";
+        letter-spacing: -0.03em;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 14px;
+        gap: 8px;
+      }
+      .row b {
+        font-weight: 600;
+      }
+      .pill {
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 4px 9px;
+        border-radius: 999px;
+        display: inline-flex;
+        gap: 5px;
+        align-items: center;
+        white-space: nowrap;
+      }
+      .pill.rep {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .pill.ok {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .pill.dis {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .pill.due {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .ph-nav {
+        margin-top: auto;
+        display: flex;
+        justify-content: space-around;
+        border-top: 1px solid var(--line);
+        padding: 12px 0 16px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .ph-nav .on {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .fab {
+        display: block;
+        text-align: center;
+        background: var(--accent);
+        color: #fff;
+        border-radius: 14px;
+        padding: 13px;
+        font-weight: 600;
+        font-size: 15px;
+        margin: 12px 0;
+      }
+      .mini-bar {
+        display: flex;
+        gap: 3px;
+        height: 10px;
+        margin: 8px 0 14px;
+      }
+      .mini-bar i {
+        flex: 1;
+        border-radius: 4px;
+        background: var(--seg2);
+      }
+      .field {
+        border: 1.5px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      .field small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .err {
+        color: var(--error);
+        font-size: 12.5px;
+        margin: 4px 0 10px;
+      }
+
+      /* TRUST + FAQ */
+      .trust {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 56px;
+      }
+      .not {
+        list-style: none;
+        padding: 0;
+        margin-top: 24px;
+      }
+      .not li {
+        padding: 16px 0;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 14px;
+      }
+      .not li::before {
+        content: "=";
+        font: 500 18px "JetBrains Mono";
+        color: var(--accent);
+      }
+      details {
+        border-bottom: 1px solid var(--line);
+        padding: 20px 0;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 19px;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+      }
+      summary::after {
+        content: "+";
+        transition: transform 0.3s var(--ease);
+        color: var(--accent);
+      }
+      details[open] summary::after {
+        transform: rotate(45deg);
+      }
+      details p {
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .signup {
+        background: var(--ink);
+        color: var(--ground);
+        border-radius: 28px;
+        padding: 64px;
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 40px;
+        align-items: end;
+      }
+      .signup h2 {
+        color: var(--ground);
+      }
+      .signup form {
+        display: flex;
+        gap: 8px;
+        background: var(--ground);
+        border-radius: 999px;
+        padding: 6px;
+      }
+      .signup input {
+        flex: 1;
+        border: 0;
+        background: none;
+        padding: 0 16px;
+        font: 16px "Inter Tight";
+        color: var(--ink);
+        min-width: 0;
+      }
+      footer {
+        padding: 40px 0;
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 14px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      @media (max-width: 900px) {
+        .hero,
+        .trust,
+        .signup {
+          grid-template-columns: 1fr;
+        }
+        .screens {
+          grid-template-columns: 1fr;
+          max-width: 380px;
+          margin-inline: auto;
+        }
+        .steps {
+          grid-template-columns: 1fr;
+        }
+        .steps article,
+        .steps article + article {
+          padding: 24px 0;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        nav ul {
+          display: none;
+        }
+        .signup {
+          padding: 36px 24px;
+        }
+        section {
+          padding: 64px 0;
+        }
+        .wrap {
+          padding: 0 16px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="wrap">
+      <header>
+        <a class="logo" href="#" aria-label="eqlShare home"
+          ><i aria-hidden="true"><b></b><b></b></i>eqlshare</a
+        >
+        <nav aria-label="Primary">
+          <ul>
+            <li><a href="#how">How it works</a></li>
+            <li><a href="#app">The app</a></li>
+            <li><a href="#trust">Privacy</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </nav>
+        <a class="btn ghost" href="#join"><span>Early access</span></a>
+      </header>
+
+      <main id="main">
+        <div class="hero">
+          <div>
+            <h1>Shared bills.<br /><em>Fair shares.</em><br />No chasing.</h1>
+            <p class="lede">
+              One person pays the electric bill. eqlShare shows everyone exactly
+              what they owe, to the cent, and who has settled.
+            </p>
+            <div class="cta">
+              <a class="btn" href="#join"><span>Get early access</span></a
+              ><a class="btn ghost" href="#how"
+                ><span>See how it works</span></a
+              >
+            </div>
+          </div>
+          <div class="splitter" aria-labelledby="try">
+            <p id="try" style="font-weight: 600; margin-bottom: 18px">
+              Try it: split a bill
+            </p>
+            <label for="total">Electricity, October</label>
+            <div class="amt">
+              <span>$</span
+              ><input
+                id="total"
+                class="mono"
+                inputmode="decimal"
+                value="137.01"
+                aria-describedby="sum"
+              />
+            </div>
+            <div class="people" role="group" aria-label="Number of roommates">
+              <button aria-pressed="false" data-n="2">2 people</button
+              ><button aria-pressed="true" data-n="3">3 people</button
+              ><button aria-pressed="false" data-n="4">4 people</button
+              ><button aria-pressed="false" data-n="5">5 people</button>
+            </div>
+            <div class="bar" id="bar" aria-hidden="true"></div>
+            <ul class="shares mono" id="shares"></ul>
+            <p class="check" id="sum" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <section id="how">
+          <h2>Three steps, then nobody has to chase anyone.</h2>
+          <div class="steps">
+            <article>
+              <span class="n">Step 1</span>
+              <h3>Make a household</h3>
+              <p>
+                Name it "Maple Apartment" and send a private invite link. Links
+                expire, and you can revoke them.
+              </p>
+            </article>
+            <article>
+              <span class="n">Step 2</span>
+              <h3>Add the bill</h3>
+              <p>
+                Enter $200.00, pick who shares it. Split it evenly or set custom
+                amounts. It won't save unless the shares add up to the total.
+              </p>
+            </article>
+            <article>
+              <span class="n">Step 3</span>
+              <h3>Mark it settled</h3>
+              <p>
+                Roommates tap "Record payment" after they Venmo you. You confirm
+                you got it. Reported and confirmed are never mixed up.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section id="app">
+          <h2>Built to answer one question: who owes what?</h2>
+          <div class="screens">
+            <figure>
+              <div
+                class="phone ph"
+                role="img"
+                aria-label="Dashboard screen showing you owe $45.67 and are owed $91.34"
+              >
+                <div class="ph-top">
+                  <span>Maple Apartment</span><span>Priya</span>
+                </div>
+                <h4>Home</h4>
+                <div class="tile owe">
+                  <small>You owe</small>
+                  <div class="big">$45.67</div>
+                  <small>to Marcus Okonkwo-Bell · due Oct 28</small>
+                </div>
+                <div class="tile">
+                  <small>Owed to you</small>
+                  <div class="big" style="color: var(--accent)">$91.34</div>
+                  <small>from 2 roommates</small>
+                </div>
+                <div class="fab">+ Add bill</div>
+                <div class="row">
+                  <span
+                    ><b>Internet</b><br /><small style="color: var(--muted)"
+                      >Review the Nov amount</small
+                    ></span
+                  ><span class="pill due">Draft</span>
+                </div>
+                <div class="row">
+                  <span
+                    ><b>Gas</b><br /><small style="color: var(--muted)"
+                      >Jordan reported $28.50</small
+                    ></span
+                  ><span class="pill rep">◐ Reported</span>
+                </div>
+                <div class="ph-nav">
+                  <span class="on">Home</span><span>Bills</span
+                  ><span>Members</span><span>Settings</span>
+                </div>
+              </div>
+              <figcaption class="cap">
+                Dashboard. Both totals sit at the top, and every status has a
+                text label, not just a color.
+              </figcaption>
+            </figure>
+            <figure>
+              <div
+                class="phone ph"
+                role="img"
+                aria-label="Custom split screen with an error because shares total $137.00 of $137.01"
+              >
+                <div class="ph-top">
+                  <span>← Cancel</span><span>Step 2 of 3</span>
+                </div>
+                <h4>Custom split</h4>
+                <div class="field">
+                  <small>Total</small><span class="mono">$137.01</span>
+                </div>
+                <div class="mini-bar">
+                  <i></i><i style="flex: 1.4"></i
+                  ><i style="flex: 0.6; background: var(--seg4)"></i>
+                </div>
+                <div class="row">
+                  <span>Priya Raman</span><span class="mono">$50.00</span>
+                </div>
+                <div class="row">
+                  <span>Marcus Okonkwo-Bell</span
+                  ><span class="mono">$60.00</span>
+                </div>
+                <div class="row">
+                  <span>Jordan Lee</span><span class="mono">$27.00</span>
+                </div>
+                <p class="err" role="alert">
+                  ⚠ Shares add up to $137.00. Add $0.01 to someone so they
+                  match $137.01.
+                </p>
+                <div class="fab" style="opacity: 0.45">Save bill</div>
+                <div class="ph-nav">
+                  <span>Home</span><span class="on">Bills</span
+                  ><span>Members</span><span>Settings</span>
+                </div>
+              </div>
+              <figcaption class="cap">
+                Custom split. Save stays locked until every cent is assigned to
+                someone.
+              </figcaption>
+            </figure>
+            <figure>
+              <div
+                class="phone ph"
+                role="img"
+                aria-label="Bill detail with confirmed, reported and disputed shares"
+              >
+                <div class="ph-top"><span>← Bills</span><span>Edit</span></div>
+                <h4>Electricity · Oct</h4>
+                <p
+                  style="
+                    font-size: 13px;
+                    color: var(--muted);
+                    margin-bottom: 12px;
+                  "
+                >
+                  $200.00 · paid upfront by Priya · due Oct 28
+                </p>
+                <div class="row">
+                  <span>Priya (paid)</span
+                  ><span class="mono" style="color: var(--muted)"
+                    >$50.00 own share</span
+                  >
+                </div>
+                <div class="row">
+                  <span>Marcus<br /><span class="mono">$50.00</span></span
+                  ><span class="pill ok">✓ Confirmed received</span>
+                </div>
+                <div class="row">
+                  <span>Jordan<br /><span class="mono">$50.00</span></span
+                  ><span class="pill rep">◐ Reported paid</span>
+                </div>
+                <div class="row">
+                  <span>Sam<br /><span class="mono">$50.00</span></span
+                  ><span class="pill dis">! Disputed</span>
+                </div>
+                <div class="fab">Confirm Jordan's payment</div>
+                <div class="ph-nav">
+                  <span>Home</span><span class="on">Bills</span
+                  ><span>Members</span><span>Settings</span>
+                </div>
+              </div>
+              <figcaption class="cap">
+                Bill detail. A payment only counts once the person who paid
+                upfront confirms it.
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section id="trust" class="trust">
+          <div>
+            <h2>We keep track. We don't touch your money.</h2>
+            <p class="lede">
+              eqlShare is a shared record for your household. You still pay each
+              other however you already do.
+            </p>
+          </div>
+          <ul class="not">
+            <li>No bank connections, cards or money transfers.</li>
+            <li>
+              Only members can see a household's bills. Every check happens on
+              the server.
+            </li>
+            <li>We never say a transfer is verified. A person confirms it.</li>
+            <li>
+              Export your records whenever you want, including after you move
+              out.
+            </li>
+          </ul>
+        </section>
+
+        <section id="faq">
+          <h2>Questions</h2>
+          <details>
+            <summary>What happens to odd cents?</summary>
+            <p>
+              $100.00 split three ways is $33.34, $33.33 and $33.33. The extra
+              cent always goes to the same person, in member order, so the
+              shares add up every time.
+            </p>
+          </details>
+          <details>
+            <summary>Someone moved out. Do we lose the history?</summary>
+            <p>
+              No. Old bills and balances stay as they were. New bills leave that
+              person out by default.
+            </p>
+          </details>
+          <details>
+            <summary>Does the Internet bill copy last month's amount?</summary>
+            <p>
+              No. Each month you get a draft to check before anyone is charged.
+            </p>
+          </details>
+          <details>
+            <summary>Is it free?</summary>
+            <p>It's free during the closed beta. We haven't set pricing yet.</p>
+          </details>
+        </section>
+
+        <section id="join">
+          <div class="signup">
+            <h2>Be one of the first five households.</h2>
+            <form
+              onsubmit="event.preventDefault();this.innerHTML='<p style=&quot;padding:12px 16px;color:var(--ink)&quot;>Thanks. We will email you.</p>'"
+            >
+              <label for="em" class="skip">Email</label>
+              <input
+                id="em"
+                type="email"
+                required
+                placeholder="you@email.com"
+                autocomplete="email"
+              />
+              <button class="btn"><span>Join</span></button>
+            </form>
+          </div>
+        </section>
+      </main>
+      <footer>
+        <span>© 2026 eqlShare</span
+        ><span
+          ><a href="#">Privacy</a> · <a href="#">Terms</a> ·
+          <a href="#">Support</a></span
+        >
+      </footer>
+    </div>
+    <script>
+      const names = ["Priya", "Marcus", "Jordan", "Sam", "Alex"];
+      let n = 3;
+      const fmt = (c) => "$" + (c / 100).toFixed(2);
+      function split(cents, k) {
+        const b = Math.floor(cents / k),
+          r = cents % k;
+        return Array.from({ length: k }, (_, i) => b + (i < r ? 1 : 0));
+      }
+      function draw() {
+        const v = document
+          .getElementById("total")
+          .value.replace(/[^0-9.]/g, "");
+        const cents = Math.round(parseFloat(v || 0) * 100);
+        const bar = document.getElementById("bar"),
+          ul = document.getElementById("shares"),
+          sum = document.getElementById("sum");
+        if (!(cents > 0)) {
+          bar.innerHTML = "";
+          ul.innerHTML = "";
+          sum.style.color = "var(--error)";
+          sum.textContent = "Enter an amount above $0.00";
+          return;
+        }
+        const s = split(cents, n);
+        bar.innerHTML = s
+          .map(
+            (c, i) =>
+              `<div style="flex:${c};animation-delay:${i * 50}ms"></div>`,
+          )
+          .join("");
+        ul.innerHTML = s
+          .map(
+            (c, i) =>
+              `<li><span>${names[i]}${
+                i === 0 ? " (paid)" : ""
+              }</span><span>${fmt(c)}</span></li>`,
+          )
+          .join("");
+        sum.style.color = "";
+        sum.textContent = `✓ ${s.map(fmt).join(" + ")} = ${fmt(
+          cents,
+        )}. Every cent is assigned.`;
+      }
+      document.getElementById("total").addEventListener("input", draw);
+      document.querySelectorAll(".people button").forEach(
+        (b) =>
+          (b.onclick = () => {
+            n = +b.dataset.n;
+            document
+              .querySelectorAll(".people button")
+              .forEach((x) => x.setAttribute("aria-pressed", x === b));
+            draw();
+          }),
+      );
+      draw();
+    </script>
+  </body>
+</html>

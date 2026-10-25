@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>eqlShare · V2 The Receipt</title>
+    <meta
+      name="description"
+      content="eqlShare design concept V2: every bill is a receipt that tears into one stub per roommate, stamped when settled."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ground: #101413;
+        --ink: #f2f5f3;
+        --muted: #a3afab;
+        --line: #2a3331;
+        --paper: #fafaf7;
+        --paper-ink: #0f172a;
+        --paper-muted: #5b6472;
+        --accent: #2dd4bf;
+        --stamp-ok: #15803d;
+        --stamp-rep: #b45309;
+        --stamp-dis: #b91c1c;
+        --ease: cubic-bezier(0.2, 0.8, 0.1, 1);
+      }
+      @media (prefers-color-scheme: light) {
+        :root:not([data-theme="dark"]) {
+          --ground: #e9eeec;
+          --ink: #0f172a;
+          --muted: #475569;
+          --line: #cbd5d1;
+          --accent: #0f766e;
+        }
+      }
+      :root[data-theme="light"] {
+        --ground: #e9eeec;
+        --ink: #0f172a;
+        --muted: #475569;
+        --line: #cbd5d1;
+        --accent: #0f766e;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        background: var(--ground);
+        color: var(--ink);
+        font:
+          400 17px/1.55 "Instrument Sans",
+          system-ui,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .mono {
+        font-family: "IBM Plex Mono", monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      a {
+        color: inherit;
+      }
+      .skip {
+        position: absolute;
+        left: -999px;
+        top: 8px;
+        background: var(--accent);
+        color: #000;
+        padding: 8px 12px;
+      }
+      .skip:focus {
+        left: 16px;
+        z-index: 9;
+      }
+      :focus-visible {
+        outline: 2px dashed var(--accent);
+        outline-offset: 4px;
+      }
+      .wrap {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 0 28px;
+      }
+      header {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        padding: 22px 0;
+        border-bottom: 1px dashed var(--line);
+        font-size: 14px;
+      }
+      .logo {
+        font: 600 15px "IBM Plex Mono";
+        letter-spacing: 0.02em;
+        text-decoration: none;
+        justify-self: center;
+      }
+      .logo::before {
+        content: "[=] ";
+      }
+      nav {
+        display: flex;
+        gap: 22px;
+      }
+      nav a {
+        text-decoration: none;
+        color: var(--muted);
+      }
+      nav a:hover {
+        color: var(--ink);
+        text-decoration: underline dashed;
+        text-underline-offset: 5px;
+      }
+      .hd-r {
+        justify-self: end;
+      }
+      .btn {
+        font: 600 15px "IBM Plex Mono";
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        display: inline-block;
+        padding: 14px 20px;
+        border: 1.5px solid var(--ink);
+        color: var(--ink);
+        background: none;
+        text-decoration: none;
+        cursor: pointer;
+        transition:
+          transform 0.25s var(--ease),
+          box-shadow 0.25s var(--ease);
+      }
+      .btn:hover {
+        transform: translate(-3px, -3px);
+        box-shadow: 3px 3px 0 var(--accent);
+      }
+      .btn:active {
+        transform: none;
+        box-shadow: none;
+      }
+      .btn.solid {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #04211e;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 48px;
+        padding: 64px 0 80px;
+        align-items: center;
+      }
+      .kicker {
+        font: 500 13px "IBM Plex Mono";
+        color: var(--accent);
+        margin-bottom: 22px;
+      }
+      h1 {
+        font-size: clamp(50px, 8vw, 118px);
+        font-weight: 600;
+        line-height: 0.9;
+        letter-spacing: -0.05em;
+      }
+      h1 .strike {
+        position: relative;
+        color: var(--muted);
+      }
+      h1 .strike::after {
+        content: "";
+        position: absolute;
+        left: -2%;
+        right: -2%;
+        top: 52%;
+        height: 0.07em;
+        background: var(--accent);
+        transform-origin: left;
+        animation: strike 1s 0.6s var(--ease) both;
+      }
+      @keyframes strike {
+        from {
+          transform: scaleX(0);
+        }
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 19px;
+        max-width: 34ch;
+        margin: 26px 0 34px;
+      }
+      .stage {
+        position: relative;
+        min-height: 540px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+      }
+      .receipt {
+        width: 300px;
+        background: var(--paper);
+        color: var(--paper-ink);
+        font-family: "IBM Plex Mono";
+        font-size: 13px;
+        padding: 24px 22px 8px;
+        position: relative;
+        filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.35));
+        transition: transform 0.6s var(--ease);
+      }
+      .receipt::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: -8px;
+        height: 8px;
+        background: radial-gradient(
+            circle at 6px 8px,
+            var(--paper) 6px,
+            transparent 6.5px
+          )
+          0 0/12px 8px;
+      }
+      .r-h {
+        text-align: center;
+        border-bottom: 1px dashed #94a3b8;
+        padding-bottom: 12px;
+        margin-bottom: 10px;
+      }
+      .r-h b {
+        font-size: 16px;
+        display: block;
+      }
+      .r-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+      }
+      .r-tot {
+        border-top: 1px dashed #94a3b8;
+        margin-top: 8px;
+        padding-top: 8px;
+        font-weight: 600;
+        font-size: 16px;
+      }
+      .stubs {
+        display: flex;
+        flex-direction: column;
+      }
+      .stub {
+        background: var(--paper);
+        color: var(--paper-ink);
+        font: 13px "IBM Plex Mono";
+        padding: 14px 22px;
+        border-top: 2px dashed #94a3b8;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        transition: transform 0.7s var(--ease);
+        cursor: pointer;
+        width: 300px;
+        border-left: 0;
+        border-right: 0;
+        border-bottom: 0;
+        text-align: left;
+      }
+      .stub:hover {
+        background: #fff;
+      }
+      .torn .stub {
+        transform: translate(var(--x), var(--y)) rotate(var(--r));
+      }
+      .stamp {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        font: 700 11px "IBM Plex Mono";
+        letter-spacing: 0.08em;
+        padding: 4px 7px;
+        border: 2px solid currentColor;
+        border-radius: 4px;
+        transform: translateY(-50%) rotate(-8deg) scale(1.6);
+        opacity: 0;
+        transition: all 0.35s var(--ease);
+      }
+      .stub[data-s] .stamp {
+        opacity: 1;
+        transform: translateY(-50%) rotate(-8deg) scale(1);
+      }
+      .stub[data-s="rep"] .stamp {
+        color: var(--stamp-rep);
+      }
+      .stub[data-s="ok"] .stamp {
+        color: var(--stamp-ok);
+      }
+      .stub[data-s] .amt {
+        opacity: 0.25;
+      }
+      .hint {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font: 500 13px "IBM Plex Mono";
+        color: var(--muted);
+      }
+
+      section {
+        padding: 100px 0;
+        border-top: 1px dashed var(--line);
+      }
+      .sec-h {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 28px;
+        margin-bottom: 56px;
+      }
+      .sec-h .mono {
+        color: var(--accent);
+        font-size: 13px;
+        padding-top: 12px;
+      }
+      h2 {
+        font-size: clamp(34px, 5vw, 68px);
+        line-height: 0.98;
+        letter-spacing: -0.04em;
+        font-weight: 600;
+        max-width: 16ch;
+      }
+      .line-steps {
+        list-style: none;
+        padding: 0;
+        margin-left: 228px;
+      }
+      .line-steps li {
+        display: grid;
+        grid-template-columns: 120px 1fr 1fr;
+        gap: 24px;
+        padding: 26px 0;
+        border-bottom: 1px dashed var(--line);
+        align-items: baseline;
+        transition: padding 0.4s var(--ease);
+      }
+      .line-steps li:hover {
+        padding-left: 12px;
+      }
+      .line-steps .mono {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .line-steps h3 {
+        font-size: 26px;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+      }
+      .line-steps p {
+        color: var(--muted);
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 28px;
+      }
+      .app {
+        background: var(--paper);
+        color: var(--paper-ink);
+        border-radius: 6px;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        min-height: 520px;
+      }
+      .side {
+        background: #f1f3f1;
+        padding: 20px 14px;
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .side b {
+        font: 600 13px "IBM Plex Mono";
+        margin-bottom: 16px;
+      }
+      .side span {
+        padding: 8px 10px;
+        border-radius: 6px;
+        color: var(--paper-muted);
+      }
+      .side .on {
+        background: #fff;
+        color: var(--paper-ink);
+        font-weight: 600;
+        box-shadow: inset 3px 0 0 #0f766e;
+      }
+      .side .add {
+        margin-top: auto;
+        background: #0f172a;
+        color: #fff;
+        text-align: center;
+        font-weight: 600;
+      }
+      .main {
+        padding: 24px;
+      }
+      .main h3 {
+        font-size: 24px;
+        letter-spacing: -0.02em;
+        margin-bottom: 4px;
+      }
+      .sub {
+        color: var(--paper-muted);
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
+      .ledger {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      .ledger th {
+        text-align: left;
+        font: 500 11px "IBM Plex Mono";
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--paper-muted);
+        padding: 8px 6px;
+        border-bottom: 1.5px solid var(--paper-ink);
+      }
+      .ledger td {
+        padding: 12px 6px;
+        border-bottom: 1px dashed #cbd5e1;
+      }
+      .ledger td.mono {
+        text-align: right;
+      }
+      .tag {
+        font: 600 11px "IBM Plex Mono";
+        letter-spacing: 0.04em;
+        padding: 3px 6px;
+        border: 1.5px solid currentColor;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+      .t-ok {
+        color: var(--stamp-ok);
+      }
+      .t-rep {
+        color: var(--stamp-rep);
+      }
+      .t-dis {
+        color: var(--stamp-dis);
+      }
+      .t-own {
+        color: var(--paper-muted);
+      }
+      .sum-strip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border: 1.5px solid var(--paper-ink);
+        margin-bottom: 22px;
+      }
+      .sum-strip div {
+        padding: 12px 14px;
+      }
+      .sum-strip div + div {
+        border-left: 1.5px dashed var(--paper-ink);
+      }
+      .sum-strip small {
+        font: 500 11px "IBM Plex Mono";
+        text-transform: uppercase;
+        color: var(--paper-muted);
+        display: block;
+      }
+      .sum-strip b {
+        font: 600 22px "IBM Plex Mono";
+      }
+      .side-cards {
+        display: grid;
+        gap: 28px;
+      }
+      .card {
+        background: var(--paper);
+        color: var(--paper-ink);
+        border-radius: 6px;
+        padding: 22px;
+      }
+      .card h3 {
+        font-size: 19px;
+        margin-bottom: 12px;
+      }
+      .empty {
+        text-align: center;
+        padding: 30px 10px;
+        border: 2px dashed #cbd5e1;
+        font-size: 14px;
+        color: var(--paper-muted);
+      }
+      .empty b {
+        display: block;
+        color: var(--paper-ink);
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+      .state {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        font-size: 14px;
+        padding: 10px 0;
+        border-bottom: 1px dashed #cbd5e1;
+      }
+      .cap {
+        font: 13px "IBM Plex Mono";
+        color: var(--muted);
+        margin-top: 12px;
+      }
+
+      .faq {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0 48px;
+        margin-left: 228px;
+      }
+      .faq div {
+        padding: 22px 0;
+        border-top: 1px dashed var(--line);
+      }
+      .faq h3 {
+        font-size: 19px;
+        margin-bottom: 8px;
+      }
+      .faq p {
+        color: var(--muted);
+      }
+      .big-cta {
+        text-align: center;
+        padding: 120px 0;
+      }
+      .big-cta h2 {
+        margin: 0 auto 32px;
+        max-width: 14ch;
+      }
+      form {
+        display: inline-flex;
+        gap: 0;
+        border: 1.5px solid var(--ink);
+      }
+      form input {
+        background: none;
+        border: 0;
+        padding: 0 18px;
+        color: var(--ink);
+        font: 16px "IBM Plex Mono";
+        width: min(300px, 52vw);
+      }
+      form .btn {
+        border: 0;
+        border-left: 1.5px solid var(--ink);
+      }
+      footer {
+        border-top: 1px dashed var(--line);
+        padding: 28px 0;
+        display: flex;
+        justify-content: space-between;
+        font: 13px "IBM Plex Mono";
+        color: var(--muted);
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .vh {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
+
+      @media (max-width: 960px) {
+        .wrap {
+          padding: 0 16px;
+        }
+        header {
+          grid-template-columns: 1fr auto;
+        }
+        nav {
+          display: none;
+        }
+        .logo {
+          justify-self: start;
+        }
+        .hero,
+        .board {
+          grid-template-columns: 1fr;
+        }
+        .stage {
+          min-height: 600px;
+        }
+        .sec-h {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .line-steps,
+        .faq {
+          margin-left: 0;
+        }
+        .line-steps li {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+        .faq {
+          grid-template-columns: 1fr;
+        }
+        .app {
+          grid-template-columns: 1fr;
+        }
+        .side {
+          flex-direction: row;
+          overflow-x: auto;
+        }
+        .side b {
+          display: none;
+        }
+        .side .add {
+          margin: 0 0 0 auto;
+        }
+        .ledger th:nth-child(3),
+        .ledger td:nth-child(3) {
+          display: none;
+        }
+        section {
+          padding: 64px 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="wrap">
+      <header>
+        <nav aria-label="Primary">
+          <a href="#how">How</a><a href="#app">App</a><a href="#faq">FAQ</a>
+        </nav>
+        <a class="logo" href="#" aria-label="eqlShare home">eqlshare</a>
+        <div class="hd-r"><a class="btn" href="#join">Early access</a></div>
+      </header>
+      <main id="main">
+        <div class="hero">
+          <div>
+            <p class="kicker mono">For roommates in the US</p>
+            <h1>
+              Shared bills. Fair shares. <span class="strike">Chasing.</span>
+            </h1>
+            <p class="lede">
+              You paid the gas bill. eqlShare tears it into one stub per
+              roommate and stamps each one when the money comes back.
+            </p>
+            <a class="btn solid" href="#join">Get early access</a>
+          </div>
+          <div class="stage" id="stage">
+            <div>
+              <div class="receipt" aria-hidden="true">
+                <div class="r-h">
+                  <b>MAPLE APARTMENT</b>Gas · Oct 2026 · due 10/28
+                </div>
+                <div class="r-row">
+                  <span>Paid upfront by</span><span>PRIYA</span>
+                </div>
+                <div class="r-row"><span>Shared by</span><span>4</span></div>
+                <div class="r-row r-tot">
+                  <span>TOTAL USD</span><span>$114.00</span>
+                </div>
+              </div>
+              <div
+                class="stubs"
+                role="list"
+                aria-label="Shares of the $114.00 gas bill"
+              >
+                <button
+                  class="stub"
+                  role="listitem"
+                  style="--x: -30px; --y: 22px; --r: -4deg"
+                  aria-label="Priya, $28.50, own share"
+                  data-own
+                >
+                  <span>PRIYA (own)</span><span class="amt">$28.50</span
+                  ><span class="stamp">OWN SHARE</span>
+                </button>
+                <button
+                  class="stub"
+                  role="listitem"
+                  style="--x: 26px; --y: 44px; --r: 3deg"
+                >
+                  <span>MARCUS</span><span class="amt">$28.50</span
+                  ><span class="stamp"></span>
+                </button>
+                <button
+                  class="stub"
+                  role="listitem"
+                  style="--x: -12px; --y: 66px; --r: -2deg"
+                >
+                  <span>JORDAN</span><span class="amt">$28.50</span
+                  ><span class="stamp"></span>
+                </button>
+                <button
+                  class="stub"
+                  role="listitem"
+                  style="--x: 34px; --y: 88px; --r: 5deg"
+                >
+                  <span>SAM</span><span class="amt">$28.50</span
+                  ><span class="stamp"></span>
+                </button>
+              </div>
+            </div>
+            <p class="hint" id="hint" aria-live="polite">
+              Click a roommate's stub to stamp it
+            </p>
+          </div>
+        </div>
+
+        <section id="how">
+          <div class="sec-h">
+            <span class="mono">How it works</span>
+            <h2>Like splitting a receipt, but nobody does the math.</h2>
+          </div>
+          <ol class="line-steps">
+            <li>
+              <span class="mono">Household</span>
+              <h3>Invite your roommates</h3>
+              <p>
+                Send one private link. It expires, and you can cancel it any
+                time.
+              </p>
+            </li>
+            <li>
+              <span class="mono">Bill</span>
+              <h3>Tear it into shares</h3>
+              <p>
+                Split evenly or by custom amounts. Every cent lands on a stub,
+                so the shares always add up to the total.
+              </p>
+            </li>
+            <li>
+              <span class="mono">Settle</span>
+              <h3>Stamp it paid</h3>
+              <p>
+                Your roommate stamps it "reported paid". You stamp it "confirmed
+                received". That's the whole system.
+              </p>
+            </li>
+          </ol>
+        </section>
+
+        <section id="app">
+          <div class="sec-h">
+            <span class="mono">The app</span>
+            <h2>A ledger the whole apartment can read.</h2>
+          </div>
+          <div class="board">
+            <figure>
+              <div
+                class="app"
+                role="img"
+                aria-label="Desktop dashboard ledger for Maple Apartment"
+              >
+                <div class="side">
+                  <b>[=] Maple Apt</b><span class="on">Home</span
+                  ><span>Bills</span><span>Members</span><span>Settings</span
+                  ><span class="add">+ Add bill</span>
+                </div>
+                <div class="main">
+                  <h3>Good morning, Priya</h3>
+                  <p class="sub">October · 4 members · USD</p>
+                  <div class="sum-strip">
+                    <div><small>You owe</small><b>$0.00</b></div>
+                    <div><small>Owed to you</small><b>$85.50</b></div>
+                    <div><small>Due this week</small><b>2</b></div>
+                  </div>
+                  <table class="ledger">
+                    <thead>
+                      <tr>
+                        <th>Bill</th>
+                        <th>Who</th>
+                        <th>Due</th>
+                        <th>Status</th>
+                        <th style="text-align: right">Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Gas</td>
+                        <td>Marcus</td>
+                        <td>Oct 28</td>
+                        <td><span class="tag t-ok">✓ CONFIRMED</span></td>
+                        <td class="mono">$28.50</td>
+                      </tr>
+                      <tr>
+                        <td>Gas</td>
+                        <td>Jordan</td>
+                        <td>Oct 28</td>
+                        <td><span class="tag t-rep">◐ REPORTED</span></td>
+                        <td class="mono">$28.50</td>
+                      </tr>
+                      <tr>
+                        <td>Gas</td>
+                        <td>Sam</td>
+                        <td>Oct 28</td>
+                        <td><span class="tag t-dis">! DISPUTED</span></td>
+                        <td class="mono">$28.50</td>
+                      </tr>
+                      <tr>
+                        <td>Wi-Fi</td>
+                        <td>Everyone</td>
+                        <td>Nov 2</td>
+                        <td><span class="tag t-own">DRAFT · REVIEW</span></td>
+                        <td class="mono">$80.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <figcaption class="cap">
+                Desktop dashboard. Each row reads as one sentence: who owes
+                what, by when, and the status.
+              </figcaption>
+            </figure>
+            <div class="side-cards">
+              <figure>
+                <div class="card" role="img" aria-label="Dispute notice">
+                  <h3>Sam disputed $28.50</h3>
+                  <div class="state">
+                    <span class="tag t-dis">!</span
+                    ><span
+                      >"I was away Oct 1 to 14. Can we do a custom split?" The
+                      history is kept and nothing changes until you edit
+                      it.</span
+                    >
+                  </div>
+                  <div class="state">
+                    <span class="tag t-own">LOG</span
+                    ><span>Priya created bill · Oct 21, 9:14 AM</span>
+                  </div>
+                </div>
+                <figcaption class="cap">Disputed state</figcaption>
+              </figure>
+              <figure>
+                <div class="card" role="img" aria-label="Empty bills state">
+                  <div class="empty">
+                    <b>No bills yet</b>Add your first one, like electricity or
+                    Wi-Fi. Your roommates will see it as soon as you save it.
+                  </div>
+                </div>
+                <figcaption class="cap">Empty state</figcaption>
+              </figure>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq">
+          <div class="sec-h">
+            <span class="mono">Fine print</span>
+            <h2>What it does and doesn't do.</h2>
+          </div>
+          <div class="faq">
+            <div>
+              <h3>Does eqlShare move money?</h3>
+              <p>
+                No. Pay each other the way you already do. eqlShare just keeps
+                the record.
+              </p>
+            </div>
+            <div>
+              <h3>Who sees our bills?</h3>
+              <p>
+                Only active members of your household. Other households can't
+                see anything.
+              </p>
+            </div>
+            <div>
+              <h3>What about leftover cents?</h3>
+              <p>
+                $100.00 split three ways comes to $33.34, $33.33 and $33.33. The
+                extra cent goes to the same person every time.
+              </p>
+            </div>
+            <div>
+              <h3>What if someone moves out?</h3>
+              <p>
+                Their past stubs stay on the record. New bills leave them out by
+                default.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="big-cta" id="join">
+          <h2>Five households get in first.</h2>
+          <form
+            onsubmit="event.preventDefault();this.outerHTML='<p class=mono>Got it. We will be in touch.</p>'"
+          >
+            <label class="vh" for="em">Email</label>
+            <input
+              id="em"
+              type="email"
+              required
+              placeholder="you@email.com"
+              autocomplete="email"
+            />
+            <button class="btn solid">Join</button>
+          </form>
+        </section>
+      </main>
+      <footer>
+        <span>© 2026 eqlShare</span
+        ><span
+          ><a href="#">Privacy</a> · <a href="#">Terms</a> ·
+          <a href="#">Support</a></span
+        >
+      </footer>
+    </div>
+    <script>
+      const stage = document.querySelector(".stubs"),
+        hint = document.getElementById("hint");
+      setTimeout(() => stage.classList.add("torn"), 700);
+      const cycle = { undefined: "rep", rep: "ok", ok: undefined };
+      const label = { rep: "REPORTED", ok: "CONFIRMED" };
+      stage.querySelectorAll(".stub:not([data-own])").forEach(
+        (s) =>
+          (s.onclick = () => {
+            const n = cycle[s.dataset.s];
+            if (n) {
+              s.dataset.s = n;
+              s.querySelector(".stamp").textContent = label[n];
+            } else {
+              delete s.dataset.s;
+            }
+            const name = s.firstChild.textContent;
+            hint.textContent =
+              n === "rep"
+                ? `${name} reported paying. Click again to confirm you got it.`
+                : n === "ok"
+                ? `${name}: confirmed received.`
+                : `${name} still owes $28.50.`;
+          }),
+      );
+      stage.querySelector("[data-own]").dataset.s = "own";
+    </script>
+  </body>
+</html>
