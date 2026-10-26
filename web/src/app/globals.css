@@ -1,33 +1,35 @@
 @import "tailwindcss";
 
 /*
-  eqlTab design tokens. Light-first fintech: porcelain ground, ink text,
-  one brand coral, serif figures for money, Geist for everything else.
+  eqlTab design tokens. Warm paper, deep rind ink, watermelon accents,
+  serif figures for money, Geist for everything else.
 */
 :root {
-  --ground: #f8fafc;
-  --surface: #ffffff;
-  --sunken: #f1f4f6;
-  --ink: #2B2210;          /* brand text colour: 15:1 on the page, 5.25:1 on coral */
-  --ink-2: #33433f;
-  --muted: #5d6b68;
-  --line: #e3e8ec;
-  --line-strong: #cfd7dc;
+  --ground: #fffaf5;
+  --surface: #fffdf9;
+  --sunken: #f4f1ea;
+  --ink: #213a32;
+  --ink-2: #42574f;
+  --muted: #697a72;
+  --line: #e6e2d8;
+  --line-strong: #cfd4cc;
   /* Brand: change these four to re-colour the app (also theme_color in app/manifest.ts).
      --brand is the logo colour. White text on it is only 2.99:1, so text and UI use the darker steps. */
-  --brand: #F26B5B;        /* logo, decorative fills, accents on dark backgrounds (5.98:1 on night) */
-  --brand-strong: #E85A4A; /* toggles, focus rings, underlines, large headline words (3:1+) */
-  --brand-ink: #B83A2B;    /* brand-coloured text on light backgrounds (5.71:1 on white) */
-  --brand-wash: #FDEDEA;   /* tinted backgrounds; brand-ink on it is 5.02:1 */
-  --brand-dark-bg: #1F2937; /* dark-mode background: dark icon, theme-color in dark mode (layout.tsx) */
+  --brand: #f56f73;
+  --brand-strong: #e2535c;
+  --brand-ink: #b53b43;
+  --brand-wash: #fff0ed;
+  --rind: #d8eda4;
+  --seed: #213a32;
+  --brand-dark-bg: #213a32;
   --success: #15803d;
   --success-wash: #e8f5ec;
   --warning: #b45309;
   --warning-wash: #fdf3e5;
   --error: #b91c1c;
   --error-wash: #fbebeb;
-  --night: #0b1a18;
-  --night-2: #13302c;
+  --night: #213a32;
+  --night-2: #315248;
   --ease: cubic-bezier(0.2, 0.75, 0.1, 1);
 }
 
@@ -44,6 +46,7 @@
   --color-brand-strong: var(--brand-strong);
   --color-brand-ink: var(--brand-ink);
   --color-brand-wash: var(--brand-wash);
+  --color-rind: var(--rind);
   --color-success: var(--success);
   --color-success-wash: var(--success-wash);
   --color-warning: var(--warning);
@@ -59,6 +62,18 @@
 }
 
 html { -webkit-text-size-adjust: 100%; }
+button:not(:disabled),
+a,
+label,
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"]::file-selector-button,
+[role="button"],
+[role="menuitem"] { cursor: pointer; }
+button:disabled,
+input:disabled,
+select:disabled { cursor: not-allowed; }
 body {
   background: var(--ground);
   color: var(--ink);
@@ -66,6 +81,92 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Heikei-inspired atmosphere: abstract forms are decoration, never information. */
+.auto-bills-stage { isolation: isolate; }
+.heikei-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.heikei-shell::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 34rem;
+  height: 25rem;
+  top: -10rem;
+  right: -12rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(216,237,164,.42), rgba(216,237,164,0) 68%);
+  pointer-events: none;
+}
+.heikei-shell::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 26rem;
+  height: 18rem;
+  bottom: 8rem;
+  left: -14rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(245,111,115,.1), rgba(245,111,115,0) 70%);
+  pointer-events: none;
+}
+.watermelon-rule { height: 3px; width: 3rem; border-radius: 999px; background: var(--brand); }
+.heikei-art {
+  position: absolute;
+  inset: -4rem -2rem auto;
+  height: 22rem;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+.heikei-art::before,
+.heikei-art::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  opacity: .7;
+}
+.heikei-art::before {
+  width: 24rem;
+  height: 11rem;
+  right: -4rem;
+  top: 1rem;
+  background: var(--rind);
+  transform: rotate(-16deg);
+  box-shadow: -8rem 7rem 0 -2.5rem rgba(245, 111, 115, .22);
+}
+.heikei-art::after {
+  width: 16rem;
+  height: 7rem;
+  left: -5rem;
+  top: 10rem;
+  background: rgba(245, 111, 115, .16);
+  transform: rotate(18deg);
+}
+.heikei-seed {
+  position: absolute;
+  width: 1.1rem;
+  height: 1.8rem;
+  border-radius: 80% 20% 80% 20%;
+  background: var(--seed);
+  opacity: .14;
+  transform: rotate(38deg);
+}
+.heikei-seed:nth-child(1) { right: 20%; top: 6rem; }
+.heikei-seed:nth-child(2) { right: 10%; top: 12rem; transform: rotate(-22deg) scale(.7); }
+.heikei-seed:nth-child(3) { left: 27%; top: 4rem; transform: rotate(70deg) scale(.55); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .heikei-art::before { animation: heikei-drift 12s ease-in-out infinite alternate; }
+  .heikei-art::after { animation: heikei-drift 16s ease-in-out -4s infinite alternate-reverse; }
+}
+@keyframes heikei-drift {
+  from { translate: 0 0; }
+  to { translate: .8rem -.45rem; }
 }
 
 /* Money: serif display figures; tabular sans for lists */

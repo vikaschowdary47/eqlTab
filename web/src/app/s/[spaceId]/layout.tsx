@@ -33,12 +33,12 @@ export default async function SpaceLayout({ children, params }: { children: Reac
   const readOnly = !ctx.me;
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[264px_minmax(0,1fr)]">
+    <div className="heikei-shell min-h-dvh lg:grid lg:grid-cols-[264px_minmax(0,1fr)]">
       <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:bg-ink focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">Skip to content</a>
       {ctx.me && <RememberSpace spaceId={spaceId} />}
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col gap-6 sticky top-0 h-dvh px-4 py-5 border-r border-line bg-ground">
+      <aside className="hidden lg:flex flex-col gap-6 sticky top-0 h-dvh px-4 py-5 border-r border-line bg-ground/80 backdrop-blur-xl">
         <Link href="/home" className="px-2" aria-label={`${APP_NAME} home`}><Logo /></Link>
         <div className="px-2"><SpaceSwitcher current={current} spaces={list} /></div>
         {!readOnly && <AddMenu spaceId={spaceId} />}

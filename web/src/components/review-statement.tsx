@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import { publishStatementAction, rejectStatementAction } from "@/lib/actions";
+import { deleteStatementAction, publishStatementAction, rejectStatementAction } from "@/lib/actions";
 import { centsToInput, parseDollars } from "@/lib/domain/money";
 import type { SplitMethod } from "@/lib/domain/split";
 import { CATEGORY_LABEL } from "./status";
@@ -26,6 +26,7 @@ export function ReviewStatement(props: {
   const [payer, setPayer] = useState(props.revisionPayerId ?? props.meId);
   const [error, setError] = useState<string | null>(null);
   const [confirmDismiss, setConfirmDismiss] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, start] = useTransition();
   const reqId = useRef(uuid());
   const cents = parseDollars(amount);
@@ -55,6 +56,14 @@ export function ReviewStatement(props: {
   function dismiss() {
     start(async () => {
       const r = await rejectStatementAction(props.spaceId, props.statementId);
+      if (!r.ok) return setError(r.error);
+      router.push(`/s/${props.spaceId}/auto-bills`);
+    });
+  }
+
+  function deleteStatement() {
+    start(async () => {
+      const r = await deleteStatementAction(props.spaceId, props.statementId);
       if (!r.ok) return setError(r.error);
       router.push(`/s/${props.spaceId}/auto-bills`);
     });
@@ -102,6 +111,15 @@ export function ReviewStatement(props: {
         ) : <Button type="button" variant="ghost" size="lg" onClick={() => setConfirmDismiss(true)}>Dismiss</Button>}
         <Button type="submit" size="lg" className="sm:ml-auto sm:min-w-[220px]" loading={pending} disabled={!ready}>Confirm bill</Button>
       </div>
+      {confirmDelete ? (
+        <Notice tone="error" title="Delete this statement permanently?">
+          This removes the imported statement and its uploaded file. It cannot be undone.
+          <div className="mt-3 flex gap-2">
+            <Button type="button" size="sm" variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            <Button type="button" size="sm" variant="danger" loading={pending} onClick={deleteStatement}>Delete permanently</Button>
+          </div>
+        </Notice>
+      ) : <button type="button" className="text-[13px] text-error underline underline-offset-4" onClick={() => setConfirmDelete(true)}>Delete this statement permanently</button>}
       {!ready && <Notice tone="warning" title="Finish these items before confirming">
         <ul className="list-disc pl-5 space-y-1">
           {problems.map((problem) => <li key={problem}>{problem}</li>)}

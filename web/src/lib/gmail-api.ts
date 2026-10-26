@@ -2,7 +2,8 @@ import "server-only";
 import { decryptGmailToken } from "@/lib/gmail";
 
 type TokenRow = { refresh_token_ciphertext: string };
-type GmailPart = { mimeType?: string; filename?: string; body?: { data?: string; attachmentId?: string }; parts?: GmailPart[] };
+type GmailHeader = { name?: string; value?: string };
+type GmailPart = { mimeType?: string; filename?: string; headers?: GmailHeader[]; body?: { data?: string; attachmentId?: string }; parts?: GmailPart[] };
 type GmailMessage = { id: string; payload?: GmailPart };
 
 function decode(value: string) {
@@ -57,5 +58,6 @@ export async function readBillMessage(messageId: string, token: string) {
   const message = await gmailJson<GmailMessage>(`/messages/${messageId}?format=full`, token);
   const out: { text: string[]; pdf?: { name: string; bytes: Buffer } } = { text: [] };
   if (message.payload) await collectParts(message.payload, token, messageId, out);
-  return { text: out.text.join("\n"), pdf: out.pdf };
+  const headers = Object.fromEntries((message.payload?.headers ?? []).map((h) => [h.name?.toLowerCase() ?? "", h.value ?? ""]));
+  return { text: out.text.join("\n"), subject: headers.subject ?? "", from: headers.from ?? "", pdf: out.pdf };
 }

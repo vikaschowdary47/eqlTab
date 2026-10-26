@@ -34,7 +34,7 @@ export function SideNav({ spaceId }: { spaceId: string }) {
         return (
           <Link key={i.href} href={i.href} aria-current={on ? "page" : undefined}
             className={cx("group flex items-center gap-3 h-10 px-3 rounded-[10px] text-[15px] transition-colors",
-              on ? "bg-surface text-ink font-medium ring-1 ring-line shadow-[0_1px_2px_rgba(11,26,24,0.05)]" : "text-ink-2 hover:text-ink hover:bg-surface/60")}>
+              on ? "bg-brand-wash text-brand-ink font-semibold ring-1 ring-brand-strong/15 shadow-[0_1px_2px_rgba(33,58,50,0.05)]" : "text-ink-2 hover:text-ink hover:bg-surface/60")}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={on ? 1.9 : 1.6} strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">{i.icon}</svg>
             {i.label}
           </Link>
@@ -51,7 +51,7 @@ export function TabBar({ spaceId }: { spaceId: string }) {
     const on = isActive(path, i.href, i.exact);
     return (
       <Link key={i.href} href={i.href} aria-current={on ? "page" : undefined}
-        className={cx("flex-1 flex flex-col items-center justify-center gap-1 h-full text-[11px] transition-colors", on ? "text-ink font-semibold" : "text-muted")}>
+        className={cx("flex-1 flex flex-col items-center justify-center gap-1 h-full text-[11px] transition-colors", on ? "text-brand-ink font-semibold" : "text-muted")}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={on ? 2 : 1.6} strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">{i.icon}</svg>
         {i.label}
       </Link>
@@ -88,8 +88,8 @@ export function AddMenu({ spaceId, compact }: { spaceId: string; compact?: boole
   return (
     <div ref={ref} className="relative">
       <button type="button" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen((o) => !o)}
-        className={cx("inline-flex items-center justify-center gap-2 font-medium text-white bg-ink hover:bg-brand-ink transition-all duration-300 ease-out-soft active:scale-95",
-          compact ? "size-12 rounded-[16px] shadow-[0_8px_20px_-8px_rgba(11,26,24,0.6)]" : "h-11 w-full rounded-[12px] text-[15px]")}>
+        className={cx("inline-flex items-center justify-center gap-2 font-semibold text-white bg-ink hover:bg-brand-ink transition-all duration-300 ease-out-soft active:scale-95",
+          compact ? "size-12 rounded-[16px] shadow-[0_8px_20px_-8px_rgba(33,58,50,0.6)] ring-4 ring-brand-wash" : "h-11 w-full rounded-[12px] text-[15px]")}>
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className={cx("transition-transform duration-300", open && "rotate-45")}><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
         {compact ? <span className="sr-only">Add</span> : "Add"}
       </button>

@@ -30,13 +30,19 @@ export async function GET(req: Request) {
   const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? new URL("/api/google/gmail/callback", req.url).toString();
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID ?? "", client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "", redirect_uri: redirectUri, grant_type: "authorization_code" }) });
   const tokens = await tokenResponse.json() as { refresh_token?: string; access_token?: string; scope?: string; error?: string };
-  if (!tokenResponse.ok || !tokens.access_token || !tokens.refresh_token) return NextResponse.redirect(new URL(`${target}?gmail=token_error`, req.url));
+  if (!tokenResponse.ok || !tokens.access_token || !tokens.refresh_token) {
+    console.error("gmail_oauth_token_exchange_failed", { status: tokenResponse.status, error: tokens.error });
+    return NextResponse.redirect(new URL(`${target}?gmail=token_error`, req.url));
+  }
 
   const profileResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", { headers: { authorization: `Bearer ${tokens.access_token}` } });
   const profile = await profileResponse.json() as { emailAddress?: string };
   const admin = supabaseAdmin();
   if (!admin || !profile.emailAddress) return NextResponse.redirect(new URL(`${target}?gmail=server_not_configured`, req.url));
   const { error } = await admin.from("gmail_connections").upsert({ user_id: user.id, gmail_address: profile.emailAddress, refresh_token_ciphertext: encryptGmailToken(tokens.refresh_token), scopes: (tokens.scope ?? "").split(" ").filter(Boolean), status: "active", last_error: null, updated_at: new Date().toISOString() }, { onConflict: "user_id,gmail_address" });
-  if (error) return NextResponse.redirect(new URL(`${target}?gmail=save_error`, req.url));
+  if (error) {
+    console.error("gmail_connection_save_failed", { code: error.code, message: error.message });
+    return NextResponse.redirect(new URL(`${target}?gmail=save_error`, req.url));
+  }
   return NextResponse.redirect(new URL(`${target}?gmail=connected`, req.url));
 }

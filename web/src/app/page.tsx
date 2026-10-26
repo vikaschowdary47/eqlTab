@@ -21,12 +21,13 @@ const FAQ = [
 export default async function Landing() {
   const user = await getUser().catch(() => null);
   return (
-    <div className="overflow-x-clip">
+    <div className="heikei-shell overflow-x-clip">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:bg-ink focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">Skip to content</a>
       <header className="mx-auto max-w-[1200px] px-5 sm:px-8 h-20 flex items-center justify-between">
         <Link href="/" aria-label={`${APP_NAME} home`}><Logo /></Link>
         <nav aria-label="Primary" className="hidden md:flex gap-8 text-[15px] text-ink-2">
           <a href="#how" className="hover:text-ink">How it works</a>
+          <a href="#auto-bills" className="text-brand-ink font-medium hover:text-ink">Auto Bills</a>
           <a href="#spaces" className="hover:text-ink">Spaces</a>
           <a href="#trust" className="hover:text-ink">Trust</a>
           <a href="#faq" className="hover:text-ink">FAQ</a>
@@ -85,6 +86,26 @@ export default async function Landing() {
               <path d="M62 50 L70 58 L76 48" fill="none" stroke="var(--brand)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </figure>
+        </section>
+
+        {/* Product signature: Auto Bills is the reason eqlTab exists. */}
+        <section id="auto-bills" className="relative mx-3 sm:mx-6 overflow-hidden rounded-[32px] bg-night text-white grain">
+          <div className="absolute -right-20 -top-24 size-80 rounded-full bg-rind/20 blur-3xl" aria-hidden="true" />
+          <div className="absolute right-[22%] top-12 size-4 rounded-[80%_20%_80%_20%] rotate-45 bg-brand/80" aria-hidden="true" />
+          <div className="relative mx-auto grid max-w-[1200px] gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1.1fr_.9fr] lg:items-end lg:py-24">
+            <div>
+              <div className="watermelon-rule" aria-hidden="true" />
+              <p className="mt-6 text-[13px] font-semibold uppercase tracking-[0.18em] text-brand">Auto Bills</p>
+              <h2 className="mt-4 max-w-[11ch] text-[clamp(42px,6vw,76px)] font-semibold leading-[.92] tracking-[-.06em]">The bill arrives. Everyone knows.</h2>
+            </div>
+            <div className="lg:pb-2">
+              <p className="max-w-[38ch] text-[17px] leading-7 text-white/75">Forward a statement or connect Gmail. eqlTab reads the useful details, flags what is missing, and waits for a person to confirm before the household sees a share.</p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <ButtonLink href="/signup" size="lg" className="bg-brand text-ink hover:bg-rind">Try Auto Bills</ButtonLink>
+                <a href="#how" className="inline-flex h-[52px] items-center px-2 text-[16px] font-medium text-white/80 underline decoration-white/25 underline-offset-8 hover:text-white">See the flow ↓</a>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* How it works: a real sequence */}

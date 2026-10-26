@@ -14,10 +14,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Browser chrome: brand coral in light mode, the dark icon's background in dark mode
+  // Browser chrome: watermelon flesh in light mode, rind ink in dark mode
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F26B5B" },
-    { media: "(prefers-color-scheme: dark)", color: "#1F2937" },
+    { media: "(prefers-color-scheme: light)", color: "#F56F73" },
+    { media: "(prefers-color-scheme: dark)", color: "#213A32" },
   ],
   width: "device-width",
   initialScale: 1,

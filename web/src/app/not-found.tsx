@@ -2,7 +2,7 @@ import { ButtonLink, EqualsArt, Logo } from "@/components/ui";
 
 export default function NotFound() {
   return (
-    <main className="min-h-dvh grid place-items-center px-5 text-center">
+    <main className="heikei-shell min-h-dvh grid place-items-center px-5 text-center">
       <div className="rise">
         <Logo />
         <div className="mt-12 flex justify-center"><EqualsArt /></div>

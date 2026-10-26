@@ -39,6 +39,7 @@ const MESSAGES: Record<string, string> = {
   not_utility: "This expense doesn't track a provider payment.",
   due_date_required: "Add a due date before sharing this bill.",
   not_publishable: "This statement can't be published. It may be a duplicate or already handled.",
+  statement_published: "This statement belongs to a published bill and can't be deleted. Void the bill instead.",
   already_published: "This statement is already a bill.",
   revision_has_settlements: "Payments were recorded on the original bill, so update it by hand.",
   not_found: "We couldn't find that.",
@@ -384,6 +385,35 @@ export async function publishStatementAction(input: {
 
 export async function rejectStatementAction(spaceId: string, statementId: string) {
   return simpleRpc(spaceId, "reject_statement", { p_statement: statementId });
+}
+
+export async function deleteStatementAction(spaceId: string, statementId: string): Promise<Result> {
+  if (!uuid.safeParse(spaceId).success || !uuid.safeParse(statementId).success) return { ok: false, error: "We couldn't identify this statement. Refresh the page and try again." };
+  const supabase = await supabaseServer();
+  const { data: statement, error: readError } = await supabase.from("statements").select("file_path").eq("id", statementId).maybeSingle();
+  if (readError) return { ok: false, error: friendly(readError) };
+  const { error } = await supabase.rpc("delete_statement", { p_statement: statementId });
+  if (error) return { ok: false, error: friendly(error) };
+  if (statement?.file_path) await supabase.storage.from("statements").remove([statement.file_path]);
+  revalidatePath(`/s/${spaceId}`, "layout");
+  return { ok: true, data: undefined };
+}
+
+export async function deleteStatementsAction(spaceId: string, statementIds: string[]): Promise<Result> {
+  if (!uuid.safeParse(spaceId).success || statementIds.length === 0 || statementIds.length > 100 || statementIds.some((id) => !uuid.safeParse(id).success)) {
+    return { ok: false, error: "Choose one or more valid statements to delete." };
+  }
+  const supabase = await supabaseServer();
+  const { data: statements, error: readError } = await supabase.from("statements").select("id, file_path").eq("space_id", spaceId).in("id", statementIds);
+  if (readError) return { ok: false, error: friendly(readError) };
+  for (const statement of statements ?? []) {
+    const { error } = await supabase.rpc("delete_statement", { p_statement: statement.id });
+    if (error) return { ok: false, error: friendly(error) };
+  }
+  const paths = (statements ?? []).map((s) => s.file_path).filter((path): path is string => !!path);
+  if (paths.length) await supabase.storage.from("statements").remove(paths);
+  revalidatePath(`/s/${spaceId}`, "layout");
+  return { ok: true, data: undefined };
 }
 
 export async function statementFileUrlAction(path: string): Promise<Result<{ url: string }>> {
