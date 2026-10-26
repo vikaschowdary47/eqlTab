@@ -30,7 +30,14 @@ export function ReviewStatement(props: {
   const reqId = useRef(uuid());
   const cents = parseDollars(amount);
   const split = useSplit(props.members, cents, props.defaultMethod);
-  const ready = !!title.trim() && !!cents && !!due && split.result?.ok;
+  const detailsErrors = {
+    title: !title.trim() ? "Add a title so everyone knows what this bill is." : null,
+    amount: cents === null ? "Enter the amount due, for example 85.81." : cents <= 0 ? "The amount must be more than $0.00." : null,
+    due: !due ? "Add the payment due date from the statement." : null,
+  };
+  const splitError = split.result && !split.result.ok ? split.result.error : null;
+  const problems = [detailsErrors.title, detailsErrors.amount, detailsErrors.due, splitError].filter((x): x is string => !!x);
+  const ready = problems.length === 0;
 
   function publish() {
     if (!ready || !cents) return;
@@ -61,14 +68,14 @@ export function ReviewStatement(props: {
       <section className="space-y-4">
         <h2 className="text-[17px] font-semibold tracking-[-0.01em]">Bill details</h2>
         <div className="grid sm:grid-cols-[1fr_200px] gap-4">
-          <Field label="Title" htmlFor="r-title"><Input id="r-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="Electricity · ComEd" /></Field>
+          <Field label="Title" htmlFor="r-title" error={detailsErrors.title}><Input id="r-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="Electricity · ComEd" aria-invalid={!!detailsErrors.title} /></Field>
           <Field label="Category" htmlFor="r-cat"><Select id="r-cat" value={category} onChange={(e) => setCategory(e.target.value)}>{Object.entries(CATEGORY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Amount due" htmlFor="r-amt" hint={flag(amount, props.initial.amount)}>
-            <Input id="r-amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))} placeholder="0.00" aria-invalid={amount !== "" && !cents} />
+          <Field label="Amount due" htmlFor="r-amt" hint={!detailsErrors.amount ? flag(amount, props.initial.amount) : undefined} error={detailsErrors.amount}>
+            <Input id="r-amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))} placeholder="0.00" aria-invalid={!!detailsErrors.amount} />
           </Field>
-          <Field label="Due date" htmlFor="r-due" hint={flag(due, props.initial.dueDate)}><Input id="r-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} required /></Field>
+          <Field label="Due date" htmlFor="r-due" hint={!detailsErrors.due ? flag(due, props.initial.dueDate) : undefined} error={detailsErrors.due}><Input id="r-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} required aria-invalid={!!detailsErrors.due} /></Field>
           <Field label="Period start" htmlFor="r-ps"><Input id="r-ps" type="date" value={ps} onChange={(e) => setPs(e.target.value)} /></Field>
           <Field label="Period end" htmlFor="r-pe"><Input id="r-pe" type="date" value={pe} onChange={(e) => setPe(e.target.value)} /></Field>
         </div>
@@ -95,7 +102,11 @@ export function ReviewStatement(props: {
         ) : <Button type="button" variant="ghost" size="lg" onClick={() => setConfirmDismiss(true)}>Dismiss</Button>}
         <Button type="submit" size="lg" className="sm:ml-auto sm:min-w-[220px]" loading={pending} disabled={!ready}>Confirm bill</Button>
       </div>
-      {!ready && <p className="text-[13px] text-muted -mt-4 sm:text-right">Add a title, amount and due date, and make sure the shares add up.</p>}
+      {!ready && <Notice tone="warning" title="Finish these items before confirming">
+        <ul className="list-disc pl-5 space-y-1">
+          {problems.map((problem) => <li key={problem}>{problem}</li>)}
+        </ul>
+      </Notice>}
     </form>
   );
 }
