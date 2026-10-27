@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { gmailAccessToken, findBillMessages, readBillMessage, readMessageSender } from "@/lib/gmail-api";
-import { billSenderDomains, isBillSender } from "@/lib/domain/bill-senders";
+import { billSenderDomains, classifyBillEmail, isBillSender, providerFromSender } from "@/lib/domain/bill-senders";
 import { extractStatement, statementKey } from "@/lib/domain/statement";
 
 export async function POST(req: Request) {
@@ -59,12 +59,22 @@ export async function POST(req: Request) {
         } catch { /* continue with the email body */ }
       }
       const extraction = extractStatement(text);
-      const billLanguage = /(bill|statement|invoice|amount due|balance due|payment due|utility|service period|billing period|pay by)/i.test(text);
-      const pdfNameSignal = !!parsed.pdf && /(bill|statement|invoice|utility|comed|xfinity|spectrum|verizon|att)/i.test(parsed.pdf.name);
-      const usefulDetail = extraction.provider.status === "found" || extraction.amountDueCents.status === "found" || extraction.dueDate.status === "found" || !!extraction.periodStart || !!extraction.periodEnd || !!extraction.statementId;
-      const isBillCandidate = billLanguage || pdfNameSignal;
-      const isNotice = extraction.kind === "notice_only";
-      if (!isBillCandidate || (!usefulDetail && !parsed.pdf && !isNotice)) continue;
+      // Marketing from the same companies is skipped; only real bills and "your bill is ready" notices are kept.
+      const verdict = classifyBillEmail({
+        subject: parsed.subject, hasPdf: !!parsed.pdf, pdfName: parsed.pdf?.name,
+        amountFound: extraction.amountDueCents.status === "found", dueDateFound: extraction.dueDate.status === "found",
+      });
+      if (verdict === "skip") continue;
+      if (verdict === "notice") extraction.kind = "notice_only";
+      else if (extraction.kind === "notice_only") extraction.kind = "statement";
+      if (extraction.provider.status !== "found") {
+        const fromSender = providerFromSender(parsed.from);
+        if (fromSender) {
+          extraction.provider = { ...extraction.provider, value: fromSender, status: "found" };
+          extraction.reasons = extraction.reasons.filter((r) => !/provider/i.test(r));
+          extraction.needsReview = extraction.reasons.length > 0;
+        }
+      }
       const parsedKey = statementKey(extraction);
       if (parsedKey) {
         const { data: sameBills } = await admin.from("statements").select("amount_cents, due_date").eq("space_id", spaceId).eq("statement_key", parsedKey).limit(20);

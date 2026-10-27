@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billSearchQuery, billSenderDomains, isBillSender, senderDomain } from "@/lib/domain/bill-senders";
+import { billSearchQuery, billSenderDomains, classifyBillEmail, isBillSender, providerFromSender, senderDomain } from "@/lib/domain/bill-senders";
 
 const domains = billSenderDomains();
 
@@ -33,5 +33,38 @@ describe("Gmail bill senders", () => {
     const q = billSearchQuery(["comed.com", "xfinity.com"]);
     expect(q).toBe("newer_than:90d from:(comed.com OR xfinity.com) -in:chats");
     expect(q).not.toMatch(/has:attachment|statement/);
+  });
+});
+
+
+const sig = (subject: string, o: Partial<Parameters<typeof classifyBillEmail>[0]> = {}) =>
+  classifyBillEmail({ subject, hasPdf: false, amountFound: false, dueDateFound: false, ...o });
+
+describe("which bill-sender emails count", () => {
+  it("keeps real bills", () => {
+    expect(sig("Your ComEd bill is ready", { amountFound: true, dueDateFound: true })).toBe("statement");
+    expect(sig("Your monthly statement", { amountFound: true })).toBe("statement");
+    expect(sig("Nicor Gas", { hasPdf: true, pdfName: "Bill_2026-10.pdf" })).toBe("statement");
+    expect(sig("Payment reminder", { amountFound: true, dueDateFound: true })).toBe("statement");
+  });
+
+  it("keeps 'your bill is ready' notices without details", () => {
+    expect(sig("Your Xfinity bill is ready")).toBe("notice");
+    expect(sig("Your e-bill is available")).toBe("notice");
+    expect(sig("Payment due soon")).toBe("notice");
+  });
+
+  it("skips marketing, even with 'view your bill' in the footer", () => {
+    expect(sig("Upgrade to the new iPhone 18 today")).toBe("skip");
+    expect(sig("Exclusive offer: save $20/mo on your bill")).toBe("skip");
+    expect(sig("Welcome to AT&T")).toBe("skip");
+    expect(sig("Your October energy tips")).toBe("skip");
+    expect(sig("Account security update")).toBe("skip");
+  });
+
+  it("names the provider from the sender when the body doesn't", () => {
+    expect(providerFromSender("ComEd <noreply@e.comed.com>")).toBe("ComEd");
+    expect(providerFromSender("AT&T <att@emaildl.att-mail.com>")).toBe("AT&T");
+    expect(providerFromSender("someone@gmail.com")).toBeNull();
   });
 });
