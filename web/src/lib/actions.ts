@@ -9,7 +9,10 @@ import { env } from "@/lib/env";
 import { splitBill, type ShareInput } from "@/lib/domain/split";
 import { SPACE_TYPES } from "@/lib/domain/spaces";
 import { extractStatement, statementFromVision, statementKey, type Extraction } from "@/lib/domain/statement";
-import { extractStatementFromImage, sniffImageType } from "@/lib/import/extract";
+import { extractQuickAdd, extractReceipt, extractStatementFromImage, sniffImageType } from "@/lib/import/extract";
+import { draftFromModel, type QuickDraft } from "@/lib/domain/quick-add";
+import { receiptFromModel, type Receipt } from "@/lib/domain/receipt";
+import { getSpaceContext } from "@/lib/data";
 
 export type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -84,6 +87,18 @@ export async function signInAction(_: unknown, form: FormData): Promise<Result> 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, error: error.message.includes("Email not confirmed") ? "Confirm your email first. Check your inbox for the link." : "That email and password don't match." };
   redirect(next);
+}
+
+/** "Continue with Google" (section 21.2). Asks Google for name and email only, never Gmail. */
+export async function signInWithGoogleAction(form: FormData): Promise<void> {
+  const next = safeNext(form.get("next"));
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${env.siteUrl()}/auth/callback?next=${encodeURIComponent(next)}`, scopes: "openid email profile", queryParams: { prompt: "select_account" } },
+  });
+  if (error || !data.url) redirect(`/login?error=google&next=${encodeURIComponent(next)}`);
+  redirect(data.url);
 }
 
 export async function signUpAction(_: unknown, form: FormData): Promise<Result<{ email: string }>> {
@@ -487,4 +502,54 @@ export async function dismissNotificationsAction(ids: number[]): Promise<Result>
   if (error) return { ok: false, error: friendly(error) };
   revalidatePath("/", "layout");
   return { ok: true, data: undefined };
+}
+
+// ---------- AI entry (spec section 19): the model only reads; the domain layer does the math ----------
+async function startAiRequest(kind: "quick_add" | "receipt"): Promise<Result<string>> {
+  if (!process.env.GEMINI_API_KEY) return { ok: false, error: "This isn't available right now. You can add the bill by hand." };
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("begin_ai_request", { p_kind: kind });
+  if (error) return { ok: false, error: error.message.includes("rate_limited") ? "You've hit this hour's limit. Try again later, or add the bill by hand." : friendly(error) };
+  return { ok: true, data: data as string };
+}
+
+async function finishAiRequest(id: string, usage: { latencyMs: number; inputTokens: number; outputTokens: number }, ok: boolean) {
+  const supabase = await supabaseServer();
+  await supabase.rpc("finish_extraction", { p_id: id, p_latency_ms: usage.latencyMs, p_input_tokens: usage.inputTokens, p_output_tokens: usage.outputTokens, p_succeeded: ok });
+}
+
+/** Used only when the on-device parser can't read the message (e.g. "Ana owes 40, rest equal"). */
+export async function quickAddAiAction(spaceId: string, message: string): Promise<Result<QuickDraft>> {
+  const text = String(message ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return { ok: false, error: "Type what you paid, like \"groceries 45 split with all\"." };
+  if (text.length > 200) return { ok: false, error: "Keep it under 200 characters." };
+  if (!uuid.safeParse(spaceId).success || !(await getSpaceContext(spaceId))?.me) return { ok: false, error: MESSAGES.forbidden };
+  const started = await startAiRequest("quick_add");
+  if (!started.ok) return started;
+  const { raw, usage } = await extractQuickAdd(text);
+  const draft = draftFromModel(raw);
+  await finishAiRequest(started.data, usage, !!draft);
+  if (!draft) return { ok: false, error: "We couldn't understand that. Try \"what, amount, who\", like \"dinner 60 with Raj\"." };
+  return { ok: true, data: draft };
+}
+
+const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
+
+/** Reads a receipt image in memory. The image is not stored. */
+export async function scanReceiptAction(spaceId: string, form: FormData): Promise<Result<Receipt>> {
+  if (!uuid.safeParse(spaceId).success || !(await getSpaceContext(spaceId))?.me) return { ok: false, error: MESSAGES.forbidden };
+  const file = form.get("receipt");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Choose a photo or screenshot of the receipt." };
+  if (file.size > MAX_RECEIPT_BYTES) return { ok: false, error: "That image is over 10 MB. Try a screenshot instead." };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const mimeType = sniffImageType(bytes);
+  if (!mimeType) return { ok: false, error: "That isn't a photo we can read. Use a JPEG, PNG, WebP or HEIC image." };
+  const started = await startAiRequest("receipt");
+  if (!started.ok) return started;
+  const { raw, usage } = await extractReceipt({ bytes, mimeType });
+  const receipt = receiptFromModel(raw);
+  await finishAiRequest(started.data, usage, !!receipt && receipt.ok);
+  if (!receipt) return { ok: false, error: "We couldn't read that receipt. Try a clearer photo, or add the bill by hand." };
+  if (!receipt.ok) return { ok: false, error: receipt.error };
+  return { ok: true, data: receipt.receipt };
 }

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { ButtonLink, Card, Notice } from "./ui";
 
-export function GmailConnect({ spaceId, address, status, count }: { spaceId: string; address?: string; status?: string; count?: string }) {
+export function GmailConnect({ spaceId, address, status, count, signedInEmail, got }: { spaceId: string; address?: string; status?: string; count?: string; signedInEmail?: string; got?: string }) {
   const result = (() => {
     switch (status) {
+      case "wrong_account": return { tone: "warning" as const, title: "That's a different Google account", message: `${got ? `You picked ${got}. ` : ""}Please connect ${signedInEmail ?? "the account you signed in with"}, the one you signed in with. Nothing was saved.` };
       case "connected": return { tone: "success" as const, title: "Gmail connected", message: "Gmail connected. You can scan for new bills now." };
       case "sync_success": return { tone: "success" as const, title: "Gmail scan finished", message: `${count ? `${count} new statement${count === "1" ? "" : "s"} imported. ` : ""}Review the statements below before confirming anything.` };
       case "disconnected": return { tone: "neutral" as const, title: "Gmail disconnected", message: "eqlTab can no longer access that inbox. Your existing statements are unchanged." };
@@ -23,8 +24,8 @@ export function GmailConnect({ spaceId, address, status, count }: { spaceId: str
   })();
   return (
     <Card className="p-5 space-y-4">
-      {result && <Notice tone={result.tone} title={result.title}>{result.message}</Notice>}
-      {address ? <p className="text-[14px] text-ink-2">Connected as <strong>{address}</strong>.</p> : <p className="text-[14px] text-ink-2">Connect Gmail so eqlTab can look for bill emails after you approve read-only access.</p>}
+      {result && <Notice tone={result.tone} title={result.title} action={status === "wrong_account" ? <ButtonLink href={`/api/google/gmail/start?spaceId=${encodeURIComponent(spaceId)}`} size="sm" variant="secondary">Try again</ButtonLink> : undefined}>{result.message}</Notice>}
+      {address ? <p className="text-[14px] text-ink-2">Connected as <strong>{address}</strong>.</p> : <p className="text-[14px] text-ink-2">We'll only look for bills from your providers (like ComEd).{signedInEmail ? <> Use the same Google account you signed in with: <strong>{signedInEmail}</strong>.</> : null}</p>}
       {!address && <ButtonLink href={`/api/google/gmail/start?spaceId=${encodeURIComponent(spaceId)}`} size="md">Connect Gmail</ButtonLink>}
       {address && <div className="flex items-center gap-4"><form action={`/api/google/gmail/sync?spaceId=${encodeURIComponent(spaceId)}`} method="post"><button className="h-10 px-4 rounded-[10px] bg-ink text-white text-[14px] font-medium">Scan Gmail</button></form><Link href={`/api/google/gmail/start?spaceId=${encodeURIComponent(spaceId)}`} className="text-[14px] text-brand-ink underline underline-offset-4">Reconnect</Link><form action={`/api/google/gmail/disconnect?spaceId=${encodeURIComponent(spaceId)}`} method="post"><button className="text-[14px] text-error underline underline-offset-4">Disconnect</button></form></div>}
       <p className="text-[12px] text-muted">Read-only access. We save parsed bill details, not your Gmail inbox.</p>

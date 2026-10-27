@@ -22,5 +22,7 @@ export async function GET(req: Request) {
 
   const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? new URL("/api/google/gmail/callback", req.url).toString();
   const params = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID ?? "", redirect_uri: redirectUri, response_type: "code", access_type: "offline", prompt: "consent", include_granted_scopes: "true", scope: SCOPES.join(" "), state });
+  // Preselect the account they signed in with (section 21.3); the callback enforces it.
+  if (user.email) params.set("login_hint", user.email);
   return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
 }
