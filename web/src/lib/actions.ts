@@ -13,6 +13,7 @@ import { extractQuickAdd, extractReceipt, extractStatementFromImage, sniffImageT
 import { draftFromModel, type QuickDraft } from "@/lib/domain/quick-add";
 import { receiptFromModel, type Receipt } from "@/lib/domain/receipt";
 import { getSpaceContext } from "@/lib/data";
+import { OTHER_STATE, STATES, parseSources } from "@/lib/domain/providers";
 
 export type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -556,4 +557,17 @@ export async function scanReceiptAction(spaceId: string, form: FormData): Promis
   if (!receipt) return { ok: false, error: "We couldn't read that receipt. Try a clearer photo, or add the bill by hand." };
   if (!receipt.ok) return { ok: false, error: receipt.error };
   return { ok: true, data: receipt.receipt };
+}
+
+// ---------- Who sends your bills (spec sections 17.2 and 21.4) ----------
+export async function saveBillSourcesAction(spaceId: string, state: string, choices: { category: string; providerId: string | null; typed: string | null }[]): Promise<Result> {
+  if (!uuid.safeParse(spaceId).success) return { ok: false, error: MESSAGES.forbidden };
+  if (state !== OTHER_STATE && !(state in STATES)) return { ok: false, error: "Pick your state from the list." };
+  const sources = parseSources(state, choices);
+  if (!sources || sources.length === 0) return { ok: false, error: "Pick at least one company, so we know which emails to look at." };
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc("set_bill_sources", { p_space: spaceId, p_state: state, p_sources: sources });
+  if (error) return { ok: false, error: friendly(error) };
+  revalidatePath(`/s/${spaceId}/auto-bills`);
+  return { ok: true, data: undefined };
 }

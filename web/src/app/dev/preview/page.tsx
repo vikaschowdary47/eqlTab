@@ -6,6 +6,8 @@ import { SpaceSwitcher } from "@/components/shell/nav";
 import { GoogleButton, OrDivider } from "@/components/auth/forms";
 import { FacePile } from "@/components/ui";
 import type { Receipt } from "@/lib/domain/receipt";
+import { BillSources } from "@/components/bill-sources";
+import { sourceFromChoice, type BillSource } from "@/lib/domain/providers";
 
 /** Development-only gallery of the section 19–21 screens with sample data. Not served in production. */
 export default async function Preview({ searchParams }: { searchParams: Promise<{ v?: string }> }) {
@@ -43,6 +45,12 @@ export default async function Preview({ searchParams }: { searchParams: Promise<
         )}
         {v === "settled" && <BalanceCards spaceId={sid} people={members} iOwe={[]} owedToMe={[]} />}
         {v === "receipt" && <ReceiptSplit spaceId={sid} today="2026-10-27" members={members} meId="me" isOwner initialReceipt={receipt} />}
+        {v === "companies" && <div className="max-w-[920px]"><BillSources spaceId={sid} state={null} sources={[]} /></div>}
+        {v === "companies-saved" && (
+          <div className="max-w-[920px]">
+            <BillSources spaceId={sid} state="IL" sources={[sourceFromChoice("IL", "electricity", { providerId: "comed" }), sourceFromChoice("IL", "gas", { providerId: "peoples-gas" }), sourceFromChoice("IL", "internet", { providerId: "xfinity" })].filter((x): x is BillSource => !!x)} />
+          </div>
+        )}
         {v === "login" && <div className="max-w-[400px]"><GoogleButton next="/home" /><OrDivider /></div>}
       </div>
     </main>

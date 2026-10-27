@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { gmailAccessToken, findBillMessages, readBillMessage, readMessageSender } from "@/lib/gmail-api";
-import { billSenderDomains, classifyBillEmail, isBillSender, providerFromSender } from "@/lib/domain/bill-senders";
+import { classifyBillEmail } from "@/lib/domain/bill-senders";
+import { matchSource, senderAddress, sourcesSearchQuery, type BillSource, type LearnedSender } from "@/lib/domain/providers";
 import { extractStatement, statementKey } from "@/lib/domain/statement";
 
 export async function POST(req: Request) {
@@ -20,8 +21,13 @@ export async function POST(req: Request) {
 
   try {
     const token = await gmailAccessToken(connection);
-    const domains = billSenderDomains(process.env.GMAIL_BILL_SENDERS);
-    const messages = await findBillMessages(token, domains);
+    // Only the companies this household chose (section 21.4). No choices yet: ask first.
+    const { data: chosen } = await admin.from("space_bill_sources").select("sources, learned_senders").eq("space_id", spaceId).maybeSingle();
+    const sources = (chosen?.sources ?? []) as BillSource[];
+    let learned = (chosen?.learned_senders ?? []) as LearnedSender[];
+    const query = sourcesSearchQuery(sources, learned);
+    if (!query) return NextResponse.redirect(new URL(`${target}?gmail=pick_providers`, req.url));
+    const messages = await findBillMessages(token, query);
     const { data: space } = await admin.from("spaces").select("inbound_token").eq("id", spaceId).maybeSingle();
     if (!space) return NextResponse.json({ error: "space_not_found" }, { status: 404 });
     const messageIds = messages.map((message) => message.id);
@@ -48,7 +54,9 @@ export async function POST(req: Request) {
         continue;
       }
       // Double-check the sender from headers only; anything else is never downloaded.
-      if (!isBillSender(await readMessageSender(message.id, token), domains)) continue;
+      const sender = await readMessageSender(message.id, token);
+      const company = matchSource(sender, sources, learned);
+      if (!company) continue;
       const parsed = await readBillMessage(message.id, token);
       let text = `${parsed.subject}\n${parsed.from}\n${parsed.text}`;
       if (parsed.pdf) {
@@ -67,13 +75,17 @@ export async function POST(req: Request) {
       if (verdict === "skip") continue;
       if (verdict === "notice") extraction.kind = "notice_only";
       else if (extraction.kind === "notice_only") extraction.kind = "statement";
+      // The household told us who this company is, so name it even when the email body doesn't.
       if (extraction.provider.status !== "found") {
-        const fromSender = providerFromSender(parsed.from);
-        if (fromSender) {
-          extraction.provider = { ...extraction.provider, value: fromSender, status: "found" };
-          extraction.reasons = extraction.reasons.filter((r) => !/provider/i.test(r));
-          extraction.needsReview = extraction.reasons.length > 0;
-        }
+        extraction.provider = { ...extraction.provider, value: company.name, status: "found" };
+        extraction.reasons = extraction.reasons.filter((r) => !/provider/i.test(r));
+        extraction.needsReview = extraction.reasons.length > 0;
+      }
+      // Remember the exact sender of a real bill, so later scans search for that address too.
+      const address = senderAddress(sender);
+      if (verdict === "statement" && address && !learned.some((l) => l.address === address) && learned.length < 30) {
+        learned = [...learned, { address, name: company.name, category: company.category }];
+        await admin.from("space_bill_sources").update({ learned_senders: learned }).eq("space_id", spaceId);
       }
       const parsedKey = statementKey(extraction);
       if (parsedKey) {

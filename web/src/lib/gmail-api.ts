@@ -1,6 +1,5 @@
 import "server-only";
 import { decryptGmailToken } from "@/lib/gmail";
-import { billSearchQuery } from "@/lib/domain/bill-senders";
 
 type TokenRow = { refresh_token_ciphertext: string };
 type GmailHeader = { name?: string; value?: string };
@@ -29,9 +28,9 @@ async function gmailJson<T>(path: string, token: string) {
   return response.json() as Promise<T>;
 }
 
-/** Only mail from known bill senders (see bill-senders.ts). Never a whole-inbox search. */
-export async function findBillMessages(token: string, domains: string[]) {
-  const data = await gmailJson<{ messages?: { id: string }[] }>(`/messages?maxResults=25&q=${encodeURIComponent(billSearchQuery(domains))}`, token);
+/** Only mail from the companies the household chose (see providers.ts). Never a whole-inbox search. */
+export async function findBillMessages(token: string, query: string) {
+  const data = await gmailJson<{ messages?: { id: string }[] }>(`/messages?maxResults=25&q=${encodeURIComponent(query)}`, token);
   return data.messages ?? [];
 }
 
