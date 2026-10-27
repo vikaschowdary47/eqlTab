@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { gmailAccessToken, findBillMessages, readBillMessage } from "@/lib/gmail-api";
+import { gmailAccessToken, findBillMessages, readBillMessage, readMessageSender } from "@/lib/gmail-api";
+import { billSenderDomains, isBillSender } from "@/lib/domain/bill-senders";
 import { extractStatement, statementKey } from "@/lib/domain/statement";
 
 export async function POST(req: Request) {
@@ -19,7 +20,8 @@ export async function POST(req: Request) {
 
   try {
     const token = await gmailAccessToken(connection);
-    const messages = await findBillMessages(token);
+    const domains = billSenderDomains(process.env.GMAIL_BILL_SENDERS);
+    const messages = await findBillMessages(token, domains);
     const { data: space } = await admin.from("spaces").select("inbound_token").eq("id", spaceId).maybeSingle();
     if (!space) return NextResponse.json({ error: "space_not_found" }, { status: 404 });
     const messageIds = messages.map((message) => message.id);
@@ -45,6 +47,8 @@ export async function POST(req: Request) {
         seen.add(message.id);
         continue;
       }
+      // Double-check the sender from headers only; anything else is never downloaded.
+      if (!isBillSender(await readMessageSender(message.id, token), domains)) continue;
       const parsed = await readBillMessage(message.id, token);
       let text = `${parsed.subject}\n${parsed.from}\n${parsed.text}`;
       if (parsed.pdf) {

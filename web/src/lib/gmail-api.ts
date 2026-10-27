@@ -1,5 +1,6 @@
 import "server-only";
 import { decryptGmailToken } from "@/lib/gmail";
+import { billSearchQuery } from "@/lib/domain/bill-senders";
 
 type TokenRow = { refresh_token_ciphertext: string };
 type GmailHeader = { name?: string; value?: string };
@@ -28,9 +29,16 @@ async function gmailJson<T>(path: string, token: string) {
   return response.json() as Promise<T>;
 }
 
-export async function findBillMessages(token: string) {
-  const data = await gmailJson<{ messages?: { id: string }[] }>(`/messages?maxResults=20&q=${encodeURIComponent('newer_than:90d has:attachment {bill statement "amount due"}')}`, token);
+/** Only mail from known bill senders (see bill-senders.ts). Never a whole-inbox search. */
+export async function findBillMessages(token: string, domains: string[]) {
+  const data = await gmailJson<{ messages?: { id: string }[] }>(`/messages?maxResults=25&q=${encodeURIComponent(billSearchQuery(domains))}`, token);
   return data.messages ?? [];
+}
+
+/** Reads only the From header, so a message can be skipped without downloading its body or attachments. */
+export async function readMessageSender(messageId: string, token: string) {
+  const message = await gmailJson<GmailMessage>(`/messages/${messageId}?format=metadata&metadataHeaders=From`, token);
+  return message.payload?.headers?.find((h) => h.name?.toLowerCase() === "from")?.value ?? "";
 }
 
 async function partContent(part: GmailPart, token: string, messageId: string) {
