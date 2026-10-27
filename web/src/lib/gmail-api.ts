@@ -28,9 +28,16 @@ async function gmailJson<T>(path: string, token: string) {
   return response.json() as Promise<T>;
 }
 
-export async function findBillMessages(token: string) {
-  const data = await gmailJson<{ messages?: { id: string }[] }>(`/messages?maxResults=20&q=${encodeURIComponent('newer_than:90d has:attachment {bill statement "amount due"}')}`, token);
+/** Only mail from the companies the household chose (see providers.ts). Never a whole-inbox search. */
+export async function findBillMessages(token: string, query: string) {
+  const data = await gmailJson<{ messages?: { id: string }[] }>(`/messages?maxResults=25&q=${encodeURIComponent(query)}`, token);
   return data.messages ?? [];
+}
+
+/** Reads only the From header, so a message can be skipped without downloading its body or attachments. */
+export async function readMessageSender(messageId: string, token: string) {
+  const message = await gmailJson<GmailMessage>(`/messages/${messageId}?format=metadata&metadataHeaders=From`, token);
+  return message.payload?.headers?.find((h) => h.name?.toLowerCase() === "from")?.value ?? "";
 }
 
 async function partContent(part: GmailPart, token: string, messageId: string) {
@@ -59,5 +66,26 @@ export async function readBillMessage(messageId: string, token: string) {
   const out: { text: string[]; pdf?: { name: string; bytes: Buffer } } = { text: [] };
   if (message.payload) await collectParts(message.payload, token, messageId, out);
   const headers = Object.fromEntries((message.payload?.headers ?? []).map((h) => [h.name?.toLowerCase() ?? "", h.value ?? ""]));
-  return { text: out.text.join("\n"), subject: headers.subject ?? "", from: headers.from ?? "", pdf: out.pdf };
+  const date = headers.date ? new Date(headers.date) : null;
+  return { text: out.text.join("\n"), subject: headers.subject ?? "", from: headers.from ?? "", date: date && !Number.isNaN(date.getTime()) ? date.toISOString() : null, pdf: out.pdf };
+}
+
+/**
+ * "Find my bills in Gmail": recent emails whose subject looks like a bill.
+ * Reads only From, Subject and Date headers, never bodies or attachments.
+ */
+export async function listBillLikeHeaders(token: string, query: string, max = 60) {
+  const data = await gmailJson<{ messages?: { id: string }[] }>(`/messages?maxResults=${max}&q=${encodeURIComponent(query)}`, token);
+  const ids = (data.messages ?? []).map((m) => m.id);
+  const out: { from: string; subject: string; date: string | null }[] = [];
+  for (let i = 0; i < ids.length; i += 10) {
+    const batch = await Promise.all(ids.slice(i, i + 10).map((id) =>
+      gmailJson<GmailMessage>(`/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`, token).catch(() => null)));
+    for (const m of batch) {
+      if (!m) continue;
+      const h = Object.fromEntries((m.payload?.headers ?? []).map((x) => [x.name?.toLowerCase() ?? "", x.value ?? ""]));
+      out.push({ from: h.from ?? "", subject: h.subject ?? "", date: h.date ? new Date(h.date).toISOString().slice(0, 10) : null });
+    }
+  }
+  return out;
 }

@@ -13,13 +13,14 @@ import { uuid } from "@/lib/uuid";
 import { APP_NAME } from "@/lib/brand";
 
 export function NewBillForm(props: {
-  spaceId: string; noun: string; defaultCategory: string; defaultMethod: SplitMethod; meId: string; isOwner: boolean; today: string; members: SplitMember[];
+  spaceId: string; spaceName: string; spaceEmoji: string; noun: string; defaultCategory: string; defaultMethod: SplitMethod; meId: string; isOwner: boolean; today: string; members: SplitMember[];
+  initial?: { title?: string; amount?: string; category?: string };
 }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState(props.defaultCategory);
-  const [amount, setAmount] = useState("");
+  const [title, setTitle] = useState(props.initial?.title ?? "");
+  const [category, setCategory] = useState(props.initial?.category && props.initial.category in CATEGORY_LABEL ? props.initial.category : props.defaultCategory);
+  const [amount, setAmount] = useState(props.initial?.amount ?? "");
   const [payer, setPayer] = useState(props.meId);
   const [billDate, setBillDate] = useState(props.today);
   const [dueDate, setDueDate] = useState("");
@@ -74,6 +75,7 @@ export function NewBillForm(props: {
           ))}
         </ol>
       </div>
+      <AddingTo name={props.spaceName} emoji={props.spaceEmoji} />
       <h1 className="text-[clamp(28px,5vw,38px)] font-semibold tracking-[-0.04em] leading-tight mb-8">Add {props.noun === "bill" ? "a bill" : "an expense"}</h1>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-8 items-start">
@@ -149,5 +151,15 @@ export function NewBillForm(props: {
         </aside>
       </div>
     </div>
+  );
+}
+
+/** Section 20.2: every add screen says which Space the bill goes to. The pill above changes it. */
+export function AddingTo({ name, emoji }: { name: string; emoji: string }) {
+  return (
+    <p className="inline-flex items-center gap-2 mb-3 h-8 pl-1.5 pr-3 rounded-full bg-sunken text-[13px] text-ink-2">
+      <span aria-hidden="true" className="grid place-items-center size-6 rounded-full bg-surface text-[13px]">{emoji}</span>
+      Adding to <strong className="font-semibold text-ink">{name}</strong>
+    </p>
   );
 }

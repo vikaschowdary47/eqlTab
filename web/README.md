@@ -7,7 +7,9 @@ Next.js 15 (App Router, TypeScript, Tailwind 4) + Supabase. Product source of tr
 1. `cp .env.example .env.local` and fill in your Supabase URL and anon key.
 2. Apply the migrations to your project: `supabase link --project-ref <ref>` then `supabase db push`.
 3. In Supabase Auth settings, set the Site URL to `NEXT_PUBLIC_SITE_URL` and add `<site>/auth/callback` to the redirect URLs.
-4. `npm install && npm run dev`
+4. Google sign-in: in Google Cloud, create an OAuth client (Web) with redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`, then in Supabase > Authentication > Providers enable Google with that client ID and secret. Sign-in asks only for name and email; Gmail is a separate, later permission.
+5. `supabase db push` again after pulling: `20261027000010` (Google names) and `20261027000011` (AI limits) are new.
+6. `npm install && npm run dev`. Sample screens with fake data: `/dev/preview?v=dashboard|receipt|settled|login` (development only).
 
 ## Checks
 
@@ -22,6 +24,12 @@ Next.js 15 (App Router, TypeScript, Tailwind 4) + Supabase. Product source of tr
 - `src/lib/actions.ts`: server actions that call those functions and turn database error codes into plain-English messages.
 - `src/app/s/[spaceId]/…`: the app (Home, Bills, Activity, Space, Auto Bills).
 - Space type (`shared_home | couple | family | group`) is a preset that changes labels and defaults only.
+
+## AI entry (spec section 19)
+
+- Quick Add (`src/lib/domain/quick-add.ts`): common phrasings ("Indian grocery 230 divide among all") are parsed in the browser, free and instant. Only unusual ones ("costco 184.40, Ana owes 40, rest equal") call Gemini through `quickAddAiAction`. The model returns words and amounts; `resolveQuickAdd` matches names (asks when unsure) and `splitBill` does the math.
+- Receipt scan (`src/lib/domain/receipt.ts`): Gemini reads the lines; `splitReceipt` splits each item between the people picked for it, shares tax/tip/fees by what each person bought (or equally), and rounds once with largest remainder. Saving is blocked until the lines match the printed total. Saved as a normal exact-split bill with a short "who had what" note; receipt images are never stored.
+- Limits: `begin_ai_request` allows 30 Quick Add and 20 receipt calls per user per hour, separate from Splitwise imports.
 
 ## Not in this build (by design)
 

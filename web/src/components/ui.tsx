@@ -108,8 +108,8 @@ export function SectionTitle({ children, action, id }: { children: ReactNode; ac
 }
 
 /* ---------- money ---------- */
-export function Money({ cents, size = "md", className }: { cents: number; size?: "sm" | "md" | "lg" | "xl"; className?: string }) {
-  const s = { sm: "text-[22px]", md: "text-[30px]", lg: "text-[44px]", xl: "text-[clamp(52px,12vw,76px)]" }[size];
+export function Money({ cents, size = "md", className }: { cents: number; size?: "sm" | "md" | "lg" | "xl" | "fluid"; className?: string }) {
+  const s = { sm: "text-[22px]", md: "text-[30px]", lg: "text-[44px]", xl: "text-[clamp(52px,12vw,76px)]", fluid: "text-[clamp(28px,8.5vw,34px)] sm:text-[44px]" }[size];
   const [d, c] = formatUSD(cents).split(".");
   return (
     <span className={cx("figure", s, className)} aria-label={formatUSD(cents)}>
@@ -203,14 +203,39 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={cx("skeleton", className)} aria-hidden="true" />;
 }
 
+/** Friendly faces: soft, warm colours from the watermelon palette, with dark initials for contrast. */
+const AVATAR_TONES: [bg: string, fg: string][] = [
+  ["#ffd9d4", "#8c2a31"], // flesh
+  ["#dcefb4", "#2f4a1c"], // rind
+  ["#ffe7a8", "#6b4a00"], // sunflower
+  ["#cfe6f5", "#1d4563"], // sky
+  ["#e6dcf7", "#4a2f75"], // plum
+  ["#c9ece0", "#1c4a3c"], // mint
+  ["#ffdcc2", "#7a3a12"], // apricot
+];
+
 export function Avatar({ name, size = 32, muted }: { name: string; size?: number; muted?: boolean }) {
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join("");
-  const hues = ["#0f766e", "#1e3a8a", "#7c2d12", "#4338ca", "#155e75", "#3f6212", "#9f1239"];
-  const h = hues[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % hues.length];
+  const [bg, fg] = AVATAR_TONES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
   return (
-    <span aria-hidden="true" className="inline-grid place-items-center rounded-full font-semibold text-white shrink-0"
-      style={{ width: size, height: size, fontSize: size * 0.38, background: muted ? "var(--line-strong)" : h }}>
+    <span aria-hidden="true" className="inline-grid place-items-center rounded-full font-semibold shrink-0 select-none"
+      style={{ width: size, height: size, fontSize: size * 0.4, background: muted ? "var(--sunken)" : bg, color: muted ? "var(--muted)" : fg, boxShadow: muted ? undefined : "inset 0 0 0 1px rgba(33,58,50,.06)" }}>
       {initials || "?"}
+    </span>
+  );
+}
+
+/** A row of overlapping faces: who is in this Space. */
+export function FacePile({ names, size = 28, max = 5 }: { names: string[]; size?: number; max?: number }) {
+  const shown = names.slice(0, max);
+  return (
+    <span className="inline-flex items-center" aria-label={`${names.length} ${names.length === 1 ? "person" : "people"}: ${names.join(", ")}`}>
+      {shown.map((n, i) => (
+        <span key={`${n}-${i}`} className="rounded-full ring-2 ring-ground" style={{ marginLeft: i ? -size * 0.16 : 0 }}><Avatar name={n} size={size} /></span>
+      ))}
+      {names.length > max && (
+        <span className="grid place-items-center rounded-full ring-2 ring-ground bg-sunken text-[11px] font-semibold text-ink-2" style={{ width: size, height: size, marginLeft: -size * 0.16 }}>+{names.length - max}</span>
+      )}
     </span>
   );
 }

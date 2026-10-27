@@ -1,0 +1,28 @@
+Your Electric bill is ready
+Public Grid Team <support@onepublicgrid.com>
+New Electric Bill is available ⚡️
+Hi Sample Person,
+We received your next ComEd electric bill. You're on auto-pay so there is nothing else you need to do.
+Total usage
+453 kWh
+Avg. neighbor
+239 kWh
+You
+453 kWh
+New charges
+$94.49
+Current balance
+$0.00
+Amount Due
+$94.49
+Thanks for being on auto-pay!
+1
+$97.62 payment will be withdrawn on Aug 05, 2026
+2
+We will use your saved VISA payment method ending with ••0000
+3
+We pay the utility on your behalf
+Want to pay this now?
+Pay bill
+You can view the details in your Public Grid dashboard.
+Note: You may receive a copy of this bill directly from the utility company. It's the same bill. By paying via Public Grid, you enjoy automatic savings – with no added fees.

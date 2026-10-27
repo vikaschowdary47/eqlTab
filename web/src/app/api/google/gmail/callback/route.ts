@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { encryptGmailToken } from "@/lib/gmail";
+import { checkSameGoogleAccount, idTokenClaims } from "@/lib/domain/google-account";
 
 function verifyState(value: string, expected: string) {
   const [payload, signature] = value.split(".");
@@ -29,10 +30,23 @@ export async function GET(req: Request) {
 
   const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? new URL("/api/google/gmail/callback", req.url).toString();
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID ?? "", client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "", redirect_uri: redirectUri, grant_type: "authorization_code" }) });
-  const tokens = await tokenResponse.json() as { refresh_token?: string; access_token?: string; scope?: string; error?: string };
+  const tokens = await tokenResponse.json() as { refresh_token?: string; access_token?: string; id_token?: string; scope?: string; error?: string };
   if (!tokenResponse.ok || !tokens.access_token || !tokens.refresh_token) {
     console.error("gmail_oauth_token_exchange_failed", { status: tokenResponse.status, error: tokens.error });
     return NextResponse.redirect(new URL(`${target}?gmail=token_error`, req.url));
+  }
+
+  // Section 21.3: only the Google account the user signed in with may be connected.
+  const consented = idTokenClaims(tokens.id_token);
+  const googleSub = user.identities?.find((i) => i.provider === "google")?.id ?? null;
+  const check = checkSameGoogleAccount({ email: user.email ?? null, googleSub }, consented);
+  if (!check.ok) {
+    // Give the access back immediately and store nothing.
+    await Promise.allSettled([tokens.refresh_token, tokens.access_token].map((t) =>
+      fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(t!)}`, { method: "POST" })));
+    const q = new URLSearchParams({ gmail: "wrong_account" });
+    if (consented.email) q.set("got", consented.email);
+    return NextResponse.redirect(new URL(`${target}?${q}`, req.url));
   }
 
   const profileResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", { headers: { authorization: `Bearer ${tokens.access_token}` } });

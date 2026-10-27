@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getSpaceContext, getStatements, missingStatements } from "@/lib/data";
+import { getSpaceContext, getStatements, getUser, missingStatements } from "@/lib/data";
 import { formatDate } from "@/lib/domain/due";
 import { env } from "@/lib/env";
 import { AutoBillsList } from "@/components/auto-bills-list";
@@ -8,11 +8,13 @@ import { UploadStatement } from "@/components/upload-statement";
 import { CopyField } from "@/components/copy-field";
 import { Card, Chip, Notice, SectionTitle } from "@/components/ui";
 import { GmailConnect } from "@/components/gmail-connect";
+import { BillSources } from "@/components/bill-sources";
+import type { BillSource } from "@/lib/domain/providers";
 import { supabaseServer } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Auto Bills" };
 
-export default async function AutoBillsPage({ params, searchParams }: { params: Promise<{ spaceId: string }>; searchParams: Promise<{ gmail?: string; count?: string }> }) {
+export default async function AutoBillsPage({ params, searchParams }: { params: Promise<{ spaceId: string }>; searchParams: Promise<{ gmail?: string; count?: string; got?: string; found?: string; already?: string; other?: string; notbill?: string; dup?: string }> }) {
   const { spaceId } = await params;
   const ctx = (await getSpaceContext(spaceId))!;
   const statements = await getStatements(spaceId);
@@ -21,8 +23,14 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
   const missing = missingStatements(statements);
   const forwardingLive = !!process.env.INBOUND_WEBHOOK_SECRET && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   const address = `bills+${ctx.space.inbound_token}@${env.inboundDomain()}`;
-  const { gmail: gmailStatus, count: gmailCount } = await searchParams;
+  const sp = await searchParams;
+  const { gmail: gmailStatus, count: gmailCount, got: gmailGot } = sp;
+  const n = (v?: string) => Math.min(Math.max(Number(v) || 0, 0), 999);
+  const scanStats = sp.found !== undefined ? { imported: n(sp.count), found: n(sp.found), already: n(sp.already), otherSender: n(sp.other), notBill: n(sp.notbill), duplicate: n(sp.dup) } : undefined;
+  const signedInEmail = (await getUser())?.email ?? undefined;
   const gmail = await supabaseServer();
+  const { data: billSources } = await gmail.from("space_bill_sources").select("state, sources").eq("space_id", spaceId).maybeSingle();
+  const chosenSources = (billSources?.sources ?? []) as BillSource[];
   const { data: gmailConnection } = ctx.me?.user_id ? await gmail.from("gmail_connections").select("gmail_address, status").eq("user_id", ctx.me.user_id).eq("status", "active").maybeSingle() : { data: null };
 
   return (
@@ -49,6 +57,12 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
       )}
 
       {ctx.me && (
+        <section id="companies" aria-label="Who sends your bills" className="rise-2 scroll-mt-24">
+          <BillSources spaceId={spaceId} state={billSources?.state ?? null} sources={chosenSources} gmailConnected={!!gmailConnection} />
+        </section>
+      )}
+
+      {ctx.me && (
         <div className="grid md:grid-cols-2 gap-6 items-start">
           <section aria-labelledby="up" className="space-y-3">
             <div className="flex items-center justify-between"><h2 id="up" className="text-[17px] font-semibold tracking-[-0.01em]">Upload a statement</h2><Chip tone="success">Available</Chip></div>
@@ -70,7 +84,7 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
           </section>
           <section aria-labelledby="gmail" className="space-y-3">
             <div className="flex items-center justify-between"><h2 id="gmail" className="text-[17px] font-semibold tracking-[-0.01em]">Connect Gmail</h2><Chip tone={gmailConnection ? "success" : "neutral"}>{gmailConnection ? "Connected" : "Optional"}</Chip></div>
-            <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} />
+            <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} scanStats={scanStats} companies={chosenSources.map((x) => x.name)} />
           </section>
         </div>
       )}
