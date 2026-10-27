@@ -12,6 +12,7 @@
  * Sources (checked Oct 2026): Illinois areas (utilitiesformyhome.com), Connecticut gas companies
  * (portal.ct.gov/pura), Texas largest retail providers (electricityplans.com), Chicago and Connecticut
  * internet coverage (broadbandmap.com), NY/NJ/MA/PA/IL/CT utilities (ENGIE utility list).
+ * Public Grid bills come from support@onepublicgrid.com (seen in a user's inbox).
  * Confirmed sender addresses: Peoples Gas noreply@peoplesgasdelivery.com, Eversource
  * noreply@notifications.eversource.com; SCG soconngas.com, CNG cngcorp.com, UI uinet.com.
  * CA, FL, GA and MI lists are the well-known utilities and were not checked against a source.
@@ -19,6 +20,10 @@
 
 export const BILL_CATEGORIES = ["electricity", "gas", "internet"] as const;
 export type BillCategory = (typeof BILL_CATEGORIES)[number];
+
+/** Dropdown categories plus "other": a sender the household picked from their own Gmail (water, trash, a billing service). */
+export type SourceCategory = BillCategory | "other";
+export const SOURCE_EMOJI: Record<SourceCategory, string> = { electricity: "⚡", gas: "🔥", internet: "📶", other: "🧾" };
 
 export const CATEGORY_COPY: Record<BillCategory, { label: string; question: string; emoji: string }> = {
   electricity: { label: "Electricity", question: "Who sends your electricity bill?", emoji: "⚡" },
@@ -55,6 +60,14 @@ const NATIONAL_INTERNET = [
   p("att-air", "AT&T Internet Air", ["att", "at&t"]),
   p("starlink", "Starlink", ["starlink"]),
 ];
+
+/**
+ * Companies that bill renters on top of (or instead of) the utility: the email comes from them, not
+ * from ComEd or Peoples Gas, so they need to be pickable everywhere.
+ */
+const PUBLIC_GRID = p("public-grid", "Public Grid", ["public grid", "onepublicgrid"], "Bills you instead of the utility");
+const CONSERVICE = p("conservice", "Conservice", ["conservice"], "Apartment utility billing");
+const BILLING_SERVICES: Record<"electricity" | "gas", Provider[]> = { electricity: [PUBLIC_GRID, CONSERVICE], gas: [CONSERVICE] };
 
 interface StateProviders { name: string; electricity: Provider[]; gas: Provider[]; internet: Provider[]; note?: string }
 
@@ -172,13 +185,13 @@ export const OTHER_STATE = "OTHER";
 
 export function providersFor(state: string, category: BillCategory): Provider[] {
   const s = STATES[state];
-  if (s) return s[category];
-  return category === "internet" ? [XFINITY, ATT, SPECTRUM, VERIZON_FIOS, FRONTIER, COX, OPTIMUM, ...NATIONAL_INTERNET] : [];
+  if (category === "internet") return s ? s.internet : [XFINITY, ATT, SPECTRUM, VERIZON_FIOS, FRONTIER, COX, OPTIMUM, ...NATIONAL_INTERNET];
+  return [...(s ? s[category] : []), ...BILLING_SERVICES[category]];
 }
 
 /** What the household chose for one category. */
 export interface BillSource {
-  category: BillCategory;
+  category: SourceCategory;
   /** A provider id from the list, or null when they typed a name. */
   providerId: string | null;
   name: string;
@@ -211,7 +224,7 @@ function quote(k: string) {
 }
 
 /** An exact sender address remembered after a real bill from it, and which company it was. */
-export interface LearnedSender { address: string; name: string; category: BillCategory }
+export interface LearnedSender { address: string; name: string; category: SourceCategory }
 
 /** Gmail query for the chosen companies plus any exact sender addresses already learned. */
 export function sourcesSearchQuery(sources: BillSource[], learned: LearnedSender[] = [], days = 90): string | null {
@@ -227,7 +240,7 @@ function normalize(s: string) {
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Which chosen company a sender line belongs to, or null. "ComEd <noreply@e.comed.com>" → ComEd. */
-export function matchSource(from: string, sources: BillSource[], learned: LearnedSender[] = []): { name: string; category: BillCategory } | null {
+export function matchSource(from: string, sources: BillSource[], learned: LearnedSender[] = []): { name: string; category: SourceCategory } | null {
   const address = senderAddress(from);
   const known = address ? learned.find((l) => l.address === address) : undefined;
   if (known) return { name: known.name, category: known.category };
@@ -247,15 +260,59 @@ export function senderAddress(from: string): string | null {
   return /^[^\s@]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(a) ? a : null;
 }
 
+/** A sender the household ticked from "Find my bills in Gmail". Matched by exact address. */
+export function sourceFromSender(name: string, from: string): BillSource | null {
+  const address = senderAddress(from);
+  const clean = name.replace(/["<>]/g, "").trim().slice(0, 60) || (address ? address.split("@")[1] : "");
+  return address && clean ? { category: "other", providerId: null, name: clean, keywords: [address] } : null;
+}
+
 /** Validates what the browser sent. Unknown ids and empty names are dropped, never guessed. */
 export function parseSources(state: string, raw: unknown): BillSource[] | null {
   if (!Array.isArray(raw) || raw.length > 12) return null;
   const out: BillSource[] = [];
   for (const r of raw) {
-    const o = r as { category?: unknown; providerId?: unknown; typed?: unknown };
+    const o = r as { category?: unknown; providerId?: unknown; typed?: unknown; address?: unknown };
+    if (o.category === "other") {
+      const s = typeof o.address === "string" ? sourceFromSender(typeof o.typed === "string" ? o.typed : "", o.address) : null;
+      if (!s) return null;
+      if (!out.some((x) => x.keywords[0] === s.keywords[0])) out.push(s);
+      continue;
+    }
     if (!BILL_CATEGORIES.includes(o.category as BillCategory)) return null;
     const s = sourceFromChoice(state, o.category as BillCategory, { providerId: typeof o.providerId === "string" ? o.providerId : null, typed: typeof o.typed === "string" ? o.typed : null });
     if (s) out.push(s);
   }
   return out;
+}
+
+// ---------- "Find my bills in Gmail" (headers only) ----------
+
+/** Recent emails whose subject looks like a bill. Only the From and Subject headers are read. */
+export const DISCOVERY_QUERY = 'newer_than:120d subject:(bill OR statement OR invoice OR "amount due" OR "payment due" OR "balance due" OR ebill OR e-bill) -in:chats -in:sent';
+
+export interface DiscoveredSender { name: string; address: string; count: number; subject: string; date: string | null }
+
+const BILL_SUBJECT = /(\b(e-?bill|bill|statement|invoice)\b.*\b(ready|available|due|posted|is here|has arrived)\b|\b(payment|amount|balance) due\b|\bpayment reminder\b|\bautopay\b|\byour (?:monthly |new |latest |electric |gas |water |internet |utility )?(?:bill|statement|invoice)\b)/i;
+const PROMO_SUBJECT = /(\boffer|\bdeal|save \$|% off|upgrade|limited time|exclusive|rewards?|survey|webinar|newsletter|tips|introducing|welcome to)/i;
+
+/** "Public Grid Team <support@onepublicgrid.com>" → name "Public Grid Team". */
+export function senderName(from: string): string {
+  const m = /^\s*"?([^"<]*?)"?\s*<[^>]+>\s*$/.exec(from);
+  return (m?.[1] ?? "").trim();
+}
+
+/** Groups bill-like emails by sender for the household to tick. Marketing subjects are left out. */
+export function groupBillSenders(emails: { from: string; subject: string; date?: string | null }[], alreadyChosen: BillSource[] = []): DiscoveredSender[] {
+  const chosen = new Set(alreadyChosen.flatMap((s) => s.keywords));
+  const groups = new Map<string, DiscoveredSender>();
+  for (const e of emails) {
+    if (!BILL_SUBJECT.test(e.subject) || PROMO_SUBJECT.test(e.subject)) continue;
+    const address = senderAddress(e.from);
+    if (!address || chosen.has(address)) continue;
+    const g = groups.get(address);
+    if (g) { g.count++; continue; }
+    groups.set(address, { name: senderName(e.from) || address.split("@")[1], address, count: 1, subject: e.subject.slice(0, 120), date: e.date ?? null });
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, 15);
 }

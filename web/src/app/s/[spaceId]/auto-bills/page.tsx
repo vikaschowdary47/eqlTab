@@ -55,7 +55,7 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
 
       {ctx.me && (
         <section id="companies" aria-label="Who sends your bills" className="rise-2 scroll-mt-24">
-          <BillSources spaceId={spaceId} state={billSources?.state ?? null} sources={chosenSources} />
+          <BillSources spaceId={spaceId} state={billSources?.state ?? null} sources={chosenSources} gmailConnected={!!gmailConnection} />
         </section>
       )}
 

@@ -68,3 +68,23 @@ export async function readBillMessage(messageId: string, token: string) {
   const headers = Object.fromEntries((message.payload?.headers ?? []).map((h) => [h.name?.toLowerCase() ?? "", h.value ?? ""]));
   return { text: out.text.join("\n"), subject: headers.subject ?? "", from: headers.from ?? "", pdf: out.pdf };
 }
+
+/**
+ * "Find my bills in Gmail": recent emails whose subject looks like a bill.
+ * Reads only From, Subject and Date headers, never bodies or attachments.
+ */
+export async function listBillLikeHeaders(token: string, query: string, max = 60) {
+  const data = await gmailJson<{ messages?: { id: string }[] }>(`/messages?maxResults=${max}&q=${encodeURIComponent(query)}`, token);
+  const ids = (data.messages ?? []).map((m) => m.id);
+  const out: { from: string; subject: string; date: string | null }[] = [];
+  for (let i = 0; i < ids.length; i += 10) {
+    const batch = await Promise.all(ids.slice(i, i + 10).map((id) =>
+      gmailJson<GmailMessage>(`/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`, token).catch(() => null)));
+    for (const m of batch) {
+      if (!m) continue;
+      const h = Object.fromEntries((m.payload?.headers ?? []).map((x) => [x.name?.toLowerCase() ?? "", x.value ?? ""]));
+      out.push({ from: h.from ?? "", subject: h.subject ?? "", date: h.date ? new Date(h.date).toISOString().slice(0, 10) : null });
+    }
+  }
+  return out;
+}

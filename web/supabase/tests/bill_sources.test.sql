@@ -27,6 +27,8 @@ end $$;
 -- Saving again replaces the list
 select set_bill_sources((select v::uuid from pg_temp.ctx where k = 'space'), 'IL', '[{"category":"internet","providerId":"xfinity","name":"Xfinity","keywords":["xfinity"]}]');
 do $$ begin assert (select sources->0->>'name' from space_bill_sources) = 'Xfinity'; end $$;
+select set_bill_sources((select v::uuid from pg_temp.ctx where k = 'space'), 'IL', '[{"category":"other","providerId":null,"name":"Public Grid Team","keywords":["support@onepublicgrid.com"]}]');
+do $$ begin assert (select sources->0->>'category' from space_bill_sources) = 'other', 'senders from Gmail are allowed'; end $$;
 select pg_temp.expect_error($$select set_bill_sources((select v::uuid from pg_temp.ctx where k = 'space'), 'IL', '[{"category":"water","name":"x","keywords":["x"]}]')$$, 'bad_sources');
 select pg_temp.expect_error($$select set_bill_sources((select v::uuid from pg_temp.ctx where k = 'space'), 'IL', '[{"category":"gas","name":"","keywords":["x"]}]')$$, 'bad_sources');
 select pg_temp.expect_error($$insert into space_bill_sources (space_id, state) values ((select v::uuid from pg_temp.ctx where k = 'space'), 'IL')$$, 'permission denied');

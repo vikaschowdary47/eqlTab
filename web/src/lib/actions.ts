@@ -13,7 +13,9 @@ import { extractQuickAdd, extractReceipt, extractStatementFromImage, sniffImageT
 import { draftFromModel, type QuickDraft } from "@/lib/domain/quick-add";
 import { receiptFromModel, type Receipt } from "@/lib/domain/receipt";
 import { getSpaceContext } from "@/lib/data";
-import { OTHER_STATE, STATES, parseSources } from "@/lib/domain/providers";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { gmailAccessToken, listBillLikeHeaders } from "@/lib/gmail-api";
+import { DISCOVERY_QUERY, OTHER_STATE, STATES, groupBillSenders, parseSources, type BillSource, type DiscoveredSender } from "@/lib/domain/providers";
 
 export type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -560,7 +562,7 @@ export async function scanReceiptAction(spaceId: string, form: FormData): Promis
 }
 
 // ---------- Who sends your bills (spec sections 17.2 and 21.4) ----------
-export async function saveBillSourcesAction(spaceId: string, state: string, choices: { category: string; providerId: string | null; typed: string | null }[]): Promise<Result> {
+export async function saveBillSourcesAction(spaceId: string, state: string, choices: { category: string; providerId: string | null; typed: string | null; address?: string }[]): Promise<Result> {
   if (!uuid.safeParse(spaceId).success) return { ok: false, error: MESSAGES.forbidden };
   if (state !== OTHER_STATE && !(state in STATES)) return { ok: false, error: "Pick your state from the list." };
   const sources = parseSources(state, choices);
@@ -570,4 +572,25 @@ export async function saveBillSourcesAction(spaceId: string, state: string, choi
   if (error) return { ok: false, error: friendly(error) };
   revalidatePath(`/s/${spaceId}/auto-bills`);
   return { ok: true, data: undefined };
+}
+
+/** "Find my bills in Gmail": bill-like senders from the user's own inbox, headers only, nothing stored. */
+export async function discoverBillSendersAction(spaceId: string): Promise<Result<DiscoveredSender[]>> {
+  if (!uuid.safeParse(spaceId).success) return { ok: false, error: MESSAGES.forbidden };
+  const ctx = await getSpaceContext(spaceId);
+  if (!ctx?.me) return { ok: false, error: MESSAGES.forbidden };
+  const admin = supabaseAdmin();
+  if (!admin) return { ok: false, error: "Gmail isn't set up on this server yet." };
+  const { data: connection } = await admin.from("gmail_connections").select("refresh_token_ciphertext").eq("user_id", ctx.userId).eq("status", "active").maybeSingle();
+  if (!connection) return { ok: false, error: "Connect Gmail first, then we can look for your bills." };
+  try {
+    const token = await gmailAccessToken(connection);
+    const headers = await listBillLikeHeaders(token, DISCOVERY_QUERY);
+    const supabase = await supabaseServer();
+    const { data: chosen } = await supabase.from("space_bill_sources").select("sources").eq("space_id", spaceId).maybeSingle();
+    return { ok: true, data: groupBillSenders(headers, (chosen?.sources ?? []) as BillSource[]) };
+  } catch (e) {
+    const revoked = e instanceof Error && e.message === "gmail_token_revoked";
+    return { ok: false, error: revoked ? "Google access was removed. Reconnect Gmail and try again." : "We couldn't read Gmail just now. Try again in a minute." };
+  }
 }
