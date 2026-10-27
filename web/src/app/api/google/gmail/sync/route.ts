@@ -79,8 +79,9 @@ export async function POST(req: Request) {
       if (verdict === "skip") { stats.notBill++; continue; }
       if (verdict === "notice") extraction.kind = "notice_only";
       else if (extraction.kind === "notice_only") extraction.kind = "statement";
-      // The household told us who this company is, so name it even when the email body doesn't.
-      if (extraction.provider.status !== "found") {
+      // The household told us who sends this bill, so that name wins. A Public Grid bill mentions ComEd
+      // (the delivery utility) in its text, but the bill, amount and due date are Public Grid's.
+      if (extraction.provider.value !== company.name) {
         extraction.provider = { ...extraction.provider, value: company.name, status: "found" };
         extraction.reasons = extraction.reasons.filter((r) => !/provider/i.test(r));
         extraction.needsReview = extraction.reasons.length > 0;
