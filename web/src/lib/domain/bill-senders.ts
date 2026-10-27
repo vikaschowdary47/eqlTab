@@ -39,7 +39,7 @@ export function classifyBillEmail(e: BillEmailSignals): "statement" | "notice" |
   return "skip";
 }
 
-export interface ScanStats { imported: number; found: number; already: number; otherSender: number; notBill: number; duplicate: number }
+export interface ScanStats { imported: number; found: number; already: number; otherSender: number; notBill: number; duplicate: number; readByAi?: number }
 
 /** Plain-language result of a Gmail scan, so "0 imported" always says why. */
 export function scanSummary(s: ScanStats, companies: string[]): { title: string; detail: string } {
@@ -58,7 +58,7 @@ export function scanSummary(s: ScanStats, companies: string[]): { title: string;
   if (s.otherSender) parts.push(`${s.otherSender} from a different sender`);
   return {
     title: s.imported ? `Found ${s.imported} new ${s.imported === 1 ? "bill" : "bills"}` : "No new bills",
-    detail: `Checked ${s.found} ${s.found === 1 ? "email" : "emails"} from ${who}: ${parts.join(", ")}.${s.imported ? " Check each one before sharing it." : ""}`,
+    detail: `Checked ${s.found} ${s.found === 1 ? "email" : "emails"} from ${who}: ${parts.join(", ")}.${s.readByAi ? ` AI helped read ${s.readByAi}.` : ""}${s.imported ? " Check each one before sharing it." : ""}`,
   };
 }
 

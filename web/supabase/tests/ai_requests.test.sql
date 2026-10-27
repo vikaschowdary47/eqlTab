@@ -29,12 +29,14 @@ select begin_ai_request('quick_add') from generate_series(1, 30);
 select pg_temp.expect_error($$select begin_ai_request('quick_add')$$, 'rate_limited');
 -- Separate budgets: receipts and Splitwise imports are unaffected.
 select begin_ai_request('receipt');
+select begin_ai_request('email');
 select begin_extraction(2);
 reset role;
 
 do $$ begin
   assert (select count(*) from extraction_requests where user_id = '30000000-0000-0000-0000-00000000000a' and kind = 'quick_add') = 30;
   assert (select count(*) from extraction_requests where user_id = '30000000-0000-0000-0000-00000000000a' and kind = 'import') = 1;
+  assert (select count(*) from extraction_requests where user_id = '30000000-0000-0000-0000-00000000000a' and kind = 'email') = 1, 'bill emails have their own budget';
 end $$;
 
 select set_config('request.jwt.claim.sub', '', false);
