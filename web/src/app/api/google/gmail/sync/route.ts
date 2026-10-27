@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { gmailAccessToken, findBillMessages, readBillMessage, readMessageSender } from "@/lib/gmail-api";
-import { classifyBillEmail } from "@/lib/domain/bill-senders";
+import { classifyBillEmail, isFollowUpNotice } from "@/lib/domain/bill-senders";
 import { matchSource, senderAddress, sourcesSearchQuery, type BillSource, type LearnedSender } from "@/lib/domain/providers";
 import { extractStatement, statementKey } from "@/lib/domain/statement";
 
@@ -40,6 +40,9 @@ export async function POST(req: Request) {
     let imported = 0;
     // What happened to each email, so the result can explain itself (no names, subjects or amounts).
     const stats = { found: messages.length, already: 0, otherSender: 0, notBill: 0, duplicate: 0 };
+    // Pass 1: read and classify. Pass 2: save real bills first, then notices that aren't follow-ups of them.
+    type Candidate = { message: { id: string }; sender: string; company: NonNullable<ReturnType<typeof matchSource>>; parsed: Awaited<ReturnType<typeof readBillMessage>>; text: string; extraction: ReturnType<typeof extractStatement>; verdict: "statement" | "notice" };
+    const candidates: Candidate[] = [];
     for (const message of messages) {
       if (seen.has(message.id)) { stats.already++; continue; }
       // Check immediately before processing too. This keeps repeated scans idempotent
@@ -77,6 +80,13 @@ export async function POST(req: Request) {
       });
       if (process.env.NODE_ENV !== "production") console.info("[gmail-scan]", { from: parsed.from, subject: parsed.subject, verdict, amount: extraction.amountDueCents.status, due: extraction.dueDate.status, pdf: parsed.pdf?.name ?? null });
       if (verdict === "skip") { stats.notBill++; continue; }
+      candidates.push({ message, sender, company, parsed, text, extraction, verdict });
+    }
+
+    const marks = candidates.map((c) => ({ company: c.company.name, verdict: c.verdict, date: c.parsed.date }));
+    candidates.sort((x, y) => (x.verdict === y.verdict ? 0 : x.verdict === "statement" ? -1 : 1));
+    for (const { message, sender, company, parsed, text, extraction, verdict } of candidates) {
+      if (isFollowUpNotice({ company: company.name, verdict, date: parsed.date }, marks)) { stats.duplicate++; continue; }
       if (verdict === "notice") extraction.kind = "notice_only";
       else if (extraction.kind === "notice_only") extraction.kind = "statement";
       // The household told us who sends this bill, so that name wins. A Public Grid bill mentions ComEd

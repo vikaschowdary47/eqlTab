@@ -66,7 +66,8 @@ export async function readBillMessage(messageId: string, token: string) {
   const out: { text: string[]; pdf?: { name: string; bytes: Buffer } } = { text: [] };
   if (message.payload) await collectParts(message.payload, token, messageId, out);
   const headers = Object.fromEntries((message.payload?.headers ?? []).map((h) => [h.name?.toLowerCase() ?? "", h.value ?? ""]));
-  return { text: out.text.join("\n"), subject: headers.subject ?? "", from: headers.from ?? "", pdf: out.pdf };
+  const date = headers.date ? new Date(headers.date) : null;
+  return { text: out.text.join("\n"), subject: headers.subject ?? "", from: headers.from ?? "", date: date && !Number.isNaN(date.getTime()) ? date.toISOString() : null, pdf: out.pdf };
 }
 
 /**

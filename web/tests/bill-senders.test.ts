@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyBillEmail, scanSummary, senderDomain } from "@/lib/domain/bill-senders";
+import { classifyBillEmail, isFollowUpNotice, scanSummary, senderDomain } from "@/lib/domain/bill-senders";
 
 describe("sender domain", () => {
   it("reads the sender's domain", () => {
@@ -47,5 +47,25 @@ describe("scan result explains itself", () => {
   });
   it("counts new bills", () => {
     expect(scanSummary({ ...zero, found: 2, imported: 2 }, ["Public Grid"]).title).toBe("Found 2 new bills");
+  });
+});
+
+describe("payment receipts and follow-up notices", () => {
+  it("skips receipts and confirmations, keeps 'payment due'", () => {
+    expect(sig("Payment received - thank you", { amountFound: true })).toBe("skip");
+    expect(sig("Your payment was successful", { amountFound: true, dueDateFound: true })).toBe("skip");
+    expect(sig("Your receipt from Public Grid", { amountFound: true })).toBe("skip");
+    expect(sig("Payment due soon")).toBe("notice");
+  });
+
+  it("drops a notice sent within 10 days of a real bill from the same company", () => {
+    const all = [
+      { company: "Public Grid", verdict: "statement" as const, date: "2026-08-04T14:34:00Z" },
+      { company: "Public Grid", verdict: "notice" as const, date: "2026-08-05T09:00:00Z" },
+      { company: "Public Grid", verdict: "notice" as const, date: "2026-07-01T09:00:00Z" },
+      { company: "Xfinity", verdict: "notice" as const, date: "2026-08-05T09:00:00Z" },
+    ];
+    expect(all.map((x) => isFollowUpNotice(x, all))).toEqual([false, true, false, false]);
+    expect(isFollowUpNotice({ company: "Public Grid", verdict: "notice", date: null }, all)).toBe(false);
   });
 });

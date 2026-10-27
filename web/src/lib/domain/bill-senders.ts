@@ -29,6 +29,8 @@ export function classifyBillEmail(e: BillEmailSignals): "statement" | "notice" |
   const subject = e.subject.toLowerCase();
   const promo = /(\boffer|\bdeal|save \$|% off|upgrade|new phone|switch|limited time|exclusive|rewards?|survey|webinar|newsletter|tips|introducing|welcome to)/i.test(subject);
   const billSubject = /(\b(e-?bill|bill|statement|invoice)\b.*\b(ready|available|due|posted|is here|has arrived)\b|\b(payment|amount|balance) due\b|\bpayment reminder\b|\bautopay\b|\byour (?:monthly |new |latest )?(?:bill|statement)\b)/i.test(subject);
+  // Receipts and confirmations are about a payment already made, not a bill to split.
+  if (/(payment (?:received|confirmed|confirmation|successful|processed|complete)|thank you for your payment|\breceipt\b|has been paid|was paid|paid successfully|payment was (?:made|received|successful))/i.test(subject)) return "skip";
   const billPdf = e.hasPdf && /(bill|statement|invoice|\d{4}[-_]?\d{2})/i.test(e.pdfName ?? "");
   if ((e.amountFound || e.dueDateFound) && (billSubject || billPdf) ) return "statement";
   if (billPdf && !promo) return "statement";
@@ -62,4 +64,14 @@ export function scanSummary(s: ScanStats, companies: string[]): { title: string;
 
 function listNames(n: string[]) {
   return n.length <= 2 ? n.join(" and ") : `${n.slice(0, -1).join(", ")} and ${n[n.length - 1]}`;
+}
+
+/**
+ * A "your bill is ready" notice is a follow-up when the same company sent a real bill within a few days
+ * (Public Grid sends both). Returns true for notices to drop. Items without a date are kept.
+ */
+export function isFollowUpNotice(item: { company: string; verdict: "statement" | "notice"; date: string | null }, all: { company: string; verdict: "statement" | "notice"; date: string | null }[], days = 10): boolean {
+  if (item.verdict !== "notice" || !item.date) return false;
+  const t = Date.parse(item.date);
+  return all.some((o) => o.verdict === "statement" && o.company === item.company && o.date !== null && Math.abs(Date.parse(o.date) - t) <= days * 86_400_000);
 }
