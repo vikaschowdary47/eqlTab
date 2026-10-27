@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -92,10 +92,14 @@ export async function signInAction(_: unknown, form: FormData): Promise<Result> 
 /** "Continue with Google" (section 21.2). Asks Google for name and email only, never Gmail. */
 export async function signInWithGoogleAction(form: FormData): Promise<void> {
   const next = safeNext(form.get("next"));
+  // Come back to the site the button was pressed on (preview, production or localhost),
+  // so a missing or stale NEXT_PUBLIC_SITE_URL can't send people somewhere else.
+  const origin = (await headers()).get("origin");
+  const base = origin && /^https?:\/\/[^/]+$/.test(origin) ? origin : env.siteUrl();
   const supabase = await supabaseServer();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${env.siteUrl()}/auth/callback?next=${encodeURIComponent(next)}`, scopes: "openid email profile", queryParams: { prompt: "select_account" } },
+    options: { redirectTo: `${base}/auth/callback?next=${encodeURIComponent(next)}`, scopes: "openid email profile", queryParams: { prompt: "select_account" } },
   });
   if (error || !data.url) redirect(`/login?error=google&next=${encodeURIComponent(next)}`);
   redirect(data.url);
