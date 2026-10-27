@@ -36,3 +36,30 @@ export function classifyBillEmail(e: BillEmailSignals): "statement" | "notice" |
   if (billSubject && !promo) return "notice";
   return "skip";
 }
+
+export interface ScanStats { imported: number; found: number; already: number; otherSender: number; notBill: number; duplicate: number }
+
+/** Plain-language result of a Gmail scan, so "0 imported" always says why. */
+export function scanSummary(s: ScanStats, companies: string[]): { title: string; detail: string } {
+  const who = companies.length ? listNames(companies) : "your companies";
+  if (s.found === 0) {
+    return {
+      title: `No emails from ${who} in the last 90 days`,
+      detail: "If your bill comes from a different company (for example a billing service like Public Grid), tap Change and use \"Find my bills in Gmail\".",
+    };
+  }
+  const parts: string[] = [];
+  if (s.imported) parts.push(`${s.imported} new ${s.imported === 1 ? "bill" : "bills"} added below`);
+  if (s.already) parts.push(`${s.already} already here`);
+  if (s.duplicate) parts.push(`${s.duplicate} same as a bill you already have`);
+  if (s.notBill) parts.push(`${s.notBill} weren't bills (ads or account alerts)`);
+  if (s.otherSender) parts.push(`${s.otherSender} from a different sender`);
+  return {
+    title: s.imported ? `Found ${s.imported} new ${s.imported === 1 ? "bill" : "bills"}` : "No new bills",
+    detail: `Checked ${s.found} ${s.found === 1 ? "email" : "emails"} from ${who}: ${parts.join(", ")}.${s.imported ? " Check each one before sharing it." : ""}`,
+  };
+}
+
+function listNames(n: string[]) {
+  return n.length <= 2 ? n.join(" and ") : `${n.slice(0, -1).join(", ")} and ${n[n.length - 1]}`;
+}

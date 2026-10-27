@@ -14,7 +14,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Auto Bills" };
 
-export default async function AutoBillsPage({ params, searchParams }: { params: Promise<{ spaceId: string }>; searchParams: Promise<{ gmail?: string; count?: string; got?: string }> }) {
+export default async function AutoBillsPage({ params, searchParams }: { params: Promise<{ spaceId: string }>; searchParams: Promise<{ gmail?: string; count?: string; got?: string; found?: string; already?: string; other?: string; notbill?: string; dup?: string }> }) {
   const { spaceId } = await params;
   const ctx = (await getSpaceContext(spaceId))!;
   const statements = await getStatements(spaceId);
@@ -23,7 +23,10 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
   const missing = missingStatements(statements);
   const forwardingLive = !!process.env.INBOUND_WEBHOOK_SECRET && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   const address = `bills+${ctx.space.inbound_token}@${env.inboundDomain()}`;
-  const { gmail: gmailStatus, count: gmailCount, got: gmailGot } = await searchParams;
+  const sp = await searchParams;
+  const { gmail: gmailStatus, count: gmailCount, got: gmailGot } = sp;
+  const n = (v?: string) => Math.min(Math.max(Number(v) || 0, 0), 999);
+  const scanStats = sp.found !== undefined ? { imported: n(sp.count), found: n(sp.found), already: n(sp.already), otherSender: n(sp.other), notBill: n(sp.notbill), duplicate: n(sp.dup) } : undefined;
   const signedInEmail = (await getUser())?.email ?? undefined;
   const gmail = await supabaseServer();
   const { data: billSources } = await gmail.from("space_bill_sources").select("state, sources").eq("space_id", spaceId).maybeSingle();
@@ -81,7 +84,7 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
           </section>
           <section aria-labelledby="gmail" className="space-y-3">
             <div className="flex items-center justify-between"><h2 id="gmail" className="text-[17px] font-semibold tracking-[-0.01em]">Connect Gmail</h2><Chip tone={gmailConnection ? "success" : "neutral"}>{gmailConnection ? "Connected" : "Optional"}</Chip></div>
-            <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} />
+            <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} scanStats={scanStats} companies={chosenSources.map((x) => x.name)} />
           </section>
         </div>
       )}

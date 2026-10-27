@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyBillEmail, senderDomain } from "@/lib/domain/bill-senders";
+import { classifyBillEmail, scanSummary, senderDomain } from "@/lib/domain/bill-senders";
 
 describe("sender domain", () => {
   it("reads the sender's domain", () => {
@@ -32,5 +32,20 @@ describe("which emails from a chosen company count", () => {
     expect(sig("Welcome to AT&T")).toBe("skip");
     expect(sig("Your October energy tips")).toBe("skip");
     expect(sig("Account security update")).toBe("skip");
+  });
+});
+
+
+describe("scan result explains itself", () => {
+  const zero = { imported: 0, found: 0, already: 0, otherSender: 0, notBill: 0, duplicate: 0 };
+  it("says when nothing came from the chosen companies", () => {
+    expect(scanSummary(zero, ["ComEd", "Peoples Gas", "Xfinity"]).title).toBe("No emails from ComEd, Peoples Gas and Xfinity in the last 90 days");
+  });
+  it("says why emails were skipped", () => {
+    const r = scanSummary({ ...zero, found: 4, already: 1, notBill: 3 }, ["Public Grid"]);
+    expect(r).toEqual({ title: "No new bills", detail: "Checked 4 emails from Public Grid: 1 already here, 3 weren't bills (ads or account alerts)." });
+  });
+  it("counts new bills", () => {
+    expect(scanSummary({ ...zero, found: 2, imported: 2 }, ["Public Grid"]).title).toBe("Found 2 new bills");
   });
 });

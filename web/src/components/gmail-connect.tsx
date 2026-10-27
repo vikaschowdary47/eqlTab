@@ -1,13 +1,20 @@
 import Link from "next/link";
+import { scanSummary, type ScanStats } from "@/lib/domain/bill-senders";
 import { ButtonLink, Card, Notice } from "./ui";
 
-export function GmailConnect({ spaceId, address, status, count, signedInEmail, got, hasSources = true }: { spaceId: string; address?: string; status?: string; count?: string; signedInEmail?: string; got?: string; hasSources?: boolean }) {
+export function GmailConnect({ spaceId, address, status, count, signedInEmail, got, hasSources = true, scanStats, companies = [] }: { spaceId: string; address?: string; status?: string; count?: string; signedInEmail?: string; got?: string; hasSources?: boolean; scanStats?: ScanStats; companies?: string[] }) {
   const result = (() => {
     switch (status) {
       case "pick_providers": return { tone: "warning" as const, title: "Pick your companies first", message: "Tell us who sends your electricity, gas and internet bills above. We only look at emails from them." };
       case "wrong_account": return { tone: "warning" as const, title: "That's a different Google account", message: `${got ? `You picked ${got}. ` : ""}Please connect ${signedInEmail ?? "the account you signed in with"}, the one you signed in with. Nothing was saved.` };
       case "connected": return { tone: "success" as const, title: "Gmail connected", message: "Gmail connected. You can scan for new bills now." };
-      case "sync_success": return { tone: "success" as const, title: "Gmail scan finished", message: `${count ? `${count} new statement${count === "1" ? "" : "s"} imported. ` : ""}Review the statements below before confirming anything.` };
+      case "sync_success": {
+        if (scanStats) {
+          const r = scanSummary(scanStats, companies);
+          return { tone: scanStats.imported ? "success" as const : "neutral" as const, title: r.title, message: r.detail };
+        }
+        return { tone: "success" as const, title: "Gmail scan finished", message: `${count ? `${count} new statement${count === "1" ? "" : "s"} imported. ` : ""}Review the statements below before confirming anything.` };
+      }
       case "disconnected": return { tone: "neutral" as const, title: "Gmail disconnected", message: "eqlTab can no longer access that inbox. Your existing statements are unchanged." };
       case "cancelled": return { tone: "warning" as const, title: "Gmail connection cancelled", message: "No access was granted. Connect Gmail when you're ready." };
       case "invalid_state": return { tone: "warning" as const, title: "Gmail connection expired", message: "The Google sign-in took too long or was opened twice. Start again." };

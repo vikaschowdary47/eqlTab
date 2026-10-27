@@ -38,8 +38,10 @@ export async function POST(req: Request) {
     const existing = existingQuery.data;
     const seen = new Set((existing ?? []).map((row) => row.statement_ref).filter((value): value is string => !!value));
     let imported = 0;
+    // What happened to each email, so the result can explain itself (no names, subjects or amounts).
+    const stats = { found: messages.length, already: 0, otherSender: 0, notBill: 0, duplicate: 0 };
     for (const message of messages) {
-      if (seen.has(message.id)) continue;
+      if (seen.has(message.id)) { stats.already++; continue; }
       // Check immediately before processing too. This keeps repeated scans idempotent
       // even if the batch lookup is stale or contains duplicate legacy rows.
       const { data: existingRows, error: existingError } = await admin.from("statements")
@@ -51,12 +53,13 @@ export async function POST(req: Request) {
       if (existingError) throw new Error("gmail_dedupe_lookup_failed");
       if (existingRows?.length) {
         seen.add(message.id);
+        stats.already++;
         continue;
       }
       // Double-check the sender from headers only; anything else is never downloaded.
       const sender = await readMessageSender(message.id, token);
       const company = matchSource(sender, sources, learned);
-      if (!company) continue;
+      if (!company) { stats.otherSender++; continue; }
       const parsed = await readBillMessage(message.id, token);
       let text = `${parsed.subject}\n${parsed.from}\n${parsed.text}`;
       if (parsed.pdf) {
@@ -72,7 +75,8 @@ export async function POST(req: Request) {
         subject: parsed.subject, hasPdf: !!parsed.pdf, pdfName: parsed.pdf?.name,
         amountFound: extraction.amountDueCents.status === "found", dueDateFound: extraction.dueDate.status === "found",
       });
-      if (verdict === "skip") continue;
+      if (process.env.NODE_ENV !== "production") console.info("[gmail-scan]", { from: parsed.from, subject: parsed.subject, verdict, amount: extraction.amountDueCents.status, due: extraction.dueDate.status, pdf: parsed.pdf?.name ?? null });
+      if (verdict === "skip") { stats.notBill++; continue; }
       if (verdict === "notice") extraction.kind = "notice_only";
       else if (extraction.kind === "notice_only") extraction.kind = "statement";
       // The household told us who this company is, so name it even when the email body doesn't.
@@ -90,7 +94,7 @@ export async function POST(req: Request) {
       const parsedKey = statementKey(extraction);
       if (parsedKey) {
         const { data: sameBills } = await admin.from("statements").select("amount_cents, due_date").eq("space_id", spaceId).eq("statement_key", parsedKey).limit(20);
-        if (sameBills?.some((row) => row.amount_cents === extraction.amountDueCents.value && row.due_date === extraction.dueDate.value)) continue;
+        if (sameBills?.some((row) => row.amount_cents === extraction.amountDueCents.value && row.due_date === extraction.dueDate.value)) { stats.duplicate++; continue; }
       }
       let filePath: string | null = null;
       let fileName: string | null = null;
@@ -108,7 +112,8 @@ export async function POST(req: Request) {
       if (!error) { imported++; seen.add(message.id); }
       else if (error.code !== "23505") throw new Error("gmail_import_failed");
     }
-    return NextResponse.redirect(new URL(`${target}?gmail=sync_success&count=${imported}`, req.url));
+    const q = new URLSearchParams({ gmail: "sync_success", count: String(imported), found: String(stats.found), already: String(stats.already), other: String(stats.otherSender), notbill: String(stats.notBill), dup: String(stats.duplicate) });
+    return NextResponse.redirect(new URL(`${target}?${q}`, req.url));
   } catch (error) {
     const reason = error instanceof Error && error.message === "gmail_token_revoked" ? "revoked" : "sync_error";
     await admin.from("gmail_connections").update({ status: reason === "revoked" ? "revoked" : "error", last_error: reason, updated_at: new Date().toISOString() }).eq("user_id", user.id);
