@@ -45,6 +45,9 @@ describe("scan result explains itself", () => {
     const r = scanSummary({ ...zero, found: 4, already: 1, notBill: 3 }, ["Public Grid"]);
     expect(r).toEqual({ title: "No new bills", detail: "Checked 4 emails from Public Grid: 1 already here, 3 weren't bills (ads or account alerts)." });
   });
+  it("says when AI helped", () => {
+    expect(scanSummary({ ...zero, found: 3, imported: 3, readByAi: 2 }, ["Public Grid"]).detail).toBe("Checked 3 emails from Public Grid: 3 new bills added below. AI helped read 2. Check each one before sharing it.");
+  });
   it("counts new bills", () => {
     expect(scanSummary({ ...zero, found: 2, imported: 2 }, ["Public Grid"]).title).toBe("Found 2 new bills");
   });

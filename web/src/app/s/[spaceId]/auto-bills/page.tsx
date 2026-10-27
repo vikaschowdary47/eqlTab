@@ -14,7 +14,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Auto Bills" };
 
-export default async function AutoBillsPage({ params, searchParams }: { params: Promise<{ spaceId: string }>; searchParams: Promise<{ gmail?: string; count?: string; got?: string; found?: string; already?: string; other?: string; notbill?: string; dup?: string }> }) {
+export default async function AutoBillsPage({ params, searchParams }: { params: Promise<{ spaceId: string }>; searchParams: Promise<{ gmail?: string; count?: string; got?: string; found?: string; already?: string; other?: string; notbill?: string; dup?: string; ai?: string }> }) {
   const { spaceId } = await params;
   const ctx = (await getSpaceContext(spaceId))!;
   const statements = await getStatements(spaceId);
@@ -26,7 +26,7 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
   const sp = await searchParams;
   const { gmail: gmailStatus, count: gmailCount, got: gmailGot } = sp;
   const n = (v?: string) => Math.min(Math.max(Number(v) || 0, 0), 999);
-  const scanStats = sp.found !== undefined ? { imported: n(sp.count), found: n(sp.found), already: n(sp.already), otherSender: n(sp.other), notBill: n(sp.notbill), duplicate: n(sp.dup) } : undefined;
+  const scanStats = sp.found !== undefined ? { imported: n(sp.count), found: n(sp.found), already: n(sp.already), otherSender: n(sp.other), notBill: n(sp.notbill), duplicate: n(sp.dup), readByAi: n(sp.ai) } : undefined;
   const signedInEmail = (await getUser())?.email ?? undefined;
   const gmail = await supabaseServer();
   const { data: billSources } = await gmail.from("space_bill_sources").select("state, sources").eq("space_id", spaceId).maybeSingle();

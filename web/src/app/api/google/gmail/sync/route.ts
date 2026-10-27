@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { gmailAccessToken, findBillMessages, readBillMessage, readMessageSender } from "@/lib/gmail-api";
+import { extractBillEmail } from "@/lib/import/extract";
+import { billFromModel, emailText, mergeWithAi, needsAi } from "@/lib/domain/email-ai";
 import { classifyBillEmail, isFollowUpNotice } from "@/lib/domain/bill-senders";
 import { matchSource, senderAddress, sourcesSearchQuery, type BillSource, type LearnedSender } from "@/lib/domain/providers";
 import { extractStatement, statementKey } from "@/lib/domain/statement";
@@ -39,7 +41,9 @@ export async function POST(req: Request) {
     const seen = new Set((existing ?? []).map((row) => row.statement_ref).filter((value): value is string => !!value));
     let imported = 0;
     // What happened to each email, so the result can explain itself (no names, subjects or amounts).
-    const stats = { found: messages.length, already: 0, otherSender: 0, notBill: 0, duplicate: 0 };
+    const stats = { found: messages.length, already: 0, otherSender: 0, notBill: 0, duplicate: 0, readByAi: 0 };
+    // At most this many emails go to the AI per scan; the rest use the rules alone.
+    let aiBudget = 15;
     // Pass 1: read and classify. Pass 2: save real bills first, then notices that aren't follow-ups of them.
     type Candidate = { message: { id: string }; sender: string; company: NonNullable<ReturnType<typeof matchSource>>; parsed: Awaited<ReturnType<typeof readBillMessage>>; text: string; extraction: ReturnType<typeof extractStatement>; verdict: "statement" | "notice" };
     const candidates: Candidate[] = [];
@@ -64,7 +68,8 @@ export async function POST(req: Request) {
       const company = matchSource(sender, sources, learned);
       if (!company) { stats.otherSender++; continue; }
       const parsed = await readBillMessage(message.id, token);
-      let text = `${parsed.subject}\n${parsed.from}\n${parsed.text}`;
+      // Plain text, not raw HTML, so labels and amounts land on readable lines.
+      let text = `${parsed.subject}\n${parsed.from}\n${emailText(parsed.text, 50_000)}`;
       if (parsed.pdf) {
         try {
           const { extractText, getDocumentProxy } = await import("unpdf");
@@ -72,13 +77,29 @@ export async function POST(req: Request) {
           text = `${out.text}\n${text}`;
         } catch { /* continue with the email body */ }
       }
-      const extraction = extractStatement(text);
+      let extraction = extractStatement(text);
       // Marketing from the same companies is skipped; only real bills and "your bill is ready" notices are kept.
-      const verdict = classifyBillEmail({
+      let verdict = classifyBillEmail({
         subject: parsed.subject, hasPdf: !!parsed.pdf, pdfName: parsed.pdf?.name,
         amountFound: extraction.amountDueCents.status === "found", dueDateFound: extraction.dueDate.status === "found",
       });
       if (process.env.NODE_ENV !== "production") console.info("[gmail-scan]", { from: parsed.from, subject: parsed.subject, verdict, amount: extraction.amountDueCents.status, due: extraction.dueDate.status, pdf: parsed.pdf?.name ?? null });
+      // Any company, any wording: when the rules miss the amount or due date, the AI reads the email
+      // and fills only those gaps (validated, and marked for review). Without a key or over budget, rules only.
+      if (needsAi(extraction, verdict) && aiBudget > 0 && process.env.GEMINI_API_KEY) {
+        const { data: requestId, error: limitErr } = await supabase.rpc("begin_ai_request", { p_kind: "email" });
+        if (!limitErr) {
+          aiBudget--;
+          const { raw, usage } = await extractBillEmail(emailText(text));
+          const ai = billFromModel(raw);
+          await supabase.rpc("finish_extraction", { p_id: requestId, p_latency_ms: usage.latencyMs, p_input_tokens: usage.inputTokens, p_output_tokens: usage.outputTokens, p_succeeded: !!ai });
+          ({ verdict, extraction } = mergeWithAi(extraction, verdict, ai));
+          stats.readByAi++;
+          if (process.env.NODE_ENV !== "production") console.info("[gmail-scan] ai", { subject: parsed.subject, kind: ai?.kind ?? "unreadable", verdict, amount: extraction.amountDueCents.status, due: extraction.dueDate.status });
+        } else {
+          aiBudget = 0;
+        }
+      }
       if (verdict === "skip") { stats.notBill++; continue; }
       candidates.push({ message, sender, company, parsed, text, extraction, verdict });
     }
@@ -123,7 +144,7 @@ export async function POST(req: Request) {
       if (!error) { imported++; seen.add(message.id); }
       else if (error.code !== "23505") throw new Error("gmail_import_failed");
     }
-    const q = new URLSearchParams({ gmail: "sync_success", count: String(imported), found: String(stats.found), already: String(stats.already), other: String(stats.otherSender), notbill: String(stats.notBill), dup: String(stats.duplicate) });
+    const q = new URLSearchParams({ gmail: "sync_success", count: String(imported), found: String(stats.found), already: String(stats.already), other: String(stats.otherSender), notbill: String(stats.notBill), dup: String(stats.duplicate), ai: String(stats.readByAi) });
     return NextResponse.redirect(new URL(`${target}?${q}`, req.url));
   } catch (error) {
     const reason = error instanceof Error && error.message === "gmail_token_revoked" ? "revoked" : "sync_error";
