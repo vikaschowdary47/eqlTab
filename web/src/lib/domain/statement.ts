@@ -43,7 +43,9 @@ const MONTH_NUM: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may:
 const DATE =`(\\d{1,2}/\\d{1,2}/\\d{2,4}|(?:${MONTHS})[a-z]*\\.?\\s+\\d{1,2},?\\s+\\d{4})`;
 const MONEY = `\\$\\s?([\\d,]+\\.\\d{2})`;
 
-const AMOUNT_LABELS = /(total amount due|amount due|total due|please pay|balance due|new charges due)/i;
+// "Your monthly gas bill in the amount of $292.23 is now available": the label sits before the number. Only bill/statement/balance
+// wording counts, so a "late fee in the amount of $25" is never read as the amount due.
+const AMOUNT_LABELS = /(total amount due|amount due|total due|please pay|balance due|new charges due|(?:bill|statement|balance) (?:is )?in the amount of|bill amount)/i;
 // Autopay services (e.g. Public Grid) give no due date, only when they'll take the payment: that's the date that matters.
 const DUE_LABELS = /(payment due date|due date|due by|please pay by|pay by|will be (?:withdrawn|charged|debited|drafted|paid) on|scheduled (?:for|on)|auto-?pay date)/i;
 /** "$97.62 payment will be withdrawn on …": what the card is actually charged, which can include a fee. */

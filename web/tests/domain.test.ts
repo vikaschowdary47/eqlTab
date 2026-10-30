@@ -145,3 +145,16 @@ Due Date Oct 29, 2026`;
     expect(toISODate("December 1, 2026")).toBe("2026-12-01");
   });
 });
+
+describe("statement amount wording", () => {
+  const scg = `Your SCG eBill is Ready Online\nDear SCG Customer,\nYour monthly gas bill in the amount of $292.23 is now available for review online.\nYour payment due date is 11/16/26 for account number 05000117018932.`;
+  it("reads 'bill in the amount of $X' (Southern Connecticut Gas eBill)", () => {
+    const e = extractStatement(scg);
+    expect(e.amountDueCents).toEqual({ value: 29223, status: "found" });
+    expect(e.dueDate).toEqual({ value: "2026-11-16", status: "found" });
+  });
+  it("does not read a late fee as the amount due", () => {
+    const e = extractStatement(`Gas notice\nA late fee in the amount of $25.00 may apply.`);
+    expect(e.amountDueCents.status).toBe("missing");
+  });
+});
