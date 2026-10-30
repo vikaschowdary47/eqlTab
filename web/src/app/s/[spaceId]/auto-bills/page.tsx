@@ -49,7 +49,44 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
         </Notice>
       ))}
 
-      {ctx.me && (
+      {open.length > 0 && (
+        <section aria-labelledby="todo">
+          <SectionTitle id="todo" action={<span className="text-[12px] text-muted">{open.length} to review</span>}>Waiting for you</SectionTitle>
+          <AutoBillsList statements={open} spaceId={spaceId} />
+        </section>
+      )}
+
+      {ctx.me && (open.length > 0 ? (
+        <details id="add-bills" className="group rounded-[14px] ring-1 ring-line bg-surface scroll-mt-24" open={!!gmailStatus}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[15px] font-medium">
+            <span>Add more bills<span className="ml-2 text-[13px] font-normal text-muted">forward an email, connect Gmail or upload</span></span>
+            <span className="text-muted transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+          </summary>
+          <div className="space-y-6 px-4 pb-4">
+        <div className="grid md:grid-cols-2 gap-4 items-start rise-2">
+              <section id="forwarding" aria-labelledby="fw" className="space-y-2 scroll-mt-24">
+                <div className="flex items-center justify-between"><h2 id="fw" className="text-[16px] font-semibold tracking-[-0.01em]">Forward bill emails</h2>{forwardingLive ? <Chip tone="success">On</Chip> : <Chip>Coming soon</Chip>}</div>
+                <Card className="p-4 space-y-3">
+                  {!forwardingLive && <Notice tone="neutral" title="Forwarding isn't switched on yet">Your address is reserved for this Space. Until forwarding is on, upload the PDF or a photo of the bill instead.</Notice>}
+                  <CopyField label="This Space's private address" value={address} mono />
+                  <ForwardingGuide address={address} code={fwCode ? { code: fwCode.code, receivedAt: fwCode.received_at } : null} />
+                  <p className="text-[12px] text-muted">If a provider only emails "your bill is ready", we'll ask you for the amount instead of guessing.</p>
+                </Card>
+              </section>
+              <section aria-labelledby="gmail" className="space-y-2">
+                <div className="flex items-center justify-between"><h2 id="gmail" className="text-[16px] font-semibold tracking-[-0.01em]">Connect Gmail</h2><Chip tone={gmailConnection ? "success" : "neutral"}>{gmailConnection ? "Connected" : "Optional"}</Chip></div>
+                <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} scanStats={scanStats} companies={chosenSources.map((x) => x.name)} />
+              </section>
+            </div>
+
+        <section aria-labelledby="up" className="space-y-2">
+              <h2 id="up" className="text-[16px] font-semibold tracking-[-0.01em]">Or upload a bill</h2>
+              <UploadStatement spaceId={spaceId} />
+            </section>
+          </div>
+        </details>
+      ) : (
+        <>
         <div className="grid md:grid-cols-2 gap-4 items-start rise-2">
           <section id="forwarding" aria-labelledby="fw" className="space-y-2 scroll-mt-24">
             <div className="flex items-center justify-between"><h2 id="fw" className="text-[16px] font-semibold tracking-[-0.01em]">Forward bill emails</h2>{forwardingLive ? <Chip tone="success">On</Chip> : <Chip>Coming soon</Chip>}</div>
@@ -65,21 +102,13 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
             <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} scanStats={scanStats} companies={chosenSources.map((x) => x.name)} />
           </section>
         </div>
-      )}
 
-      {open.length > 0 && (
-        <section aria-labelledby="todo">
-          <SectionTitle id="todo" action={<span className="text-[12px] text-muted">{open.length} to review</span>}>Waiting for you</SectionTitle>
-          <AutoBillsList statements={open} spaceId={spaceId} />
-        </section>
-      )}
-
-      {ctx.me && (
         <section aria-labelledby="up" className="space-y-2">
           <h2 id="up" className="text-[16px] font-semibold tracking-[-0.01em]">Or upload a bill</h2>
           <UploadStatement spaceId={spaceId} />
         </section>
-      )}
+        </>
+      ))}
 
       {ctx.me && (
         <details id="companies" className="group rounded-[14px] ring-1 ring-line bg-surface scroll-mt-24" open={chosenSources.length === 0 && !!gmailConnection}>
