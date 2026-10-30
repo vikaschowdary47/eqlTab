@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { extractStatement, statementKey } from "@/lib/domain/statement";
+import { extractStatement, maskForAi, mergeWithAi, statementFromEmailAi, statementKey } from "@/lib/domain/statement";
+import { extractStatementFromText } from "@/lib/import/extract";
 
 /**
  * Inbound email webhook (provider-agnostic JSON). Disabled until INBOUND_WEBHOOK_SECRET and
@@ -48,7 +49,18 @@ export async function POST(req: Request) {
     }
   }
 
-  const e = extractStatement(text);
+  let e = extractStatement(text);
+  // The rule-based parser could not read the amount or due date: let the AI try, within a daily per-Space cap.
+  // The AI result is checked against the email text, merged only into the gaps, and always goes to review.
+  if (text.trim() && e.kind === "statement" && (e.amountDueCents.status !== "found" || e.dueDate.status !== "found") && process.env.GEMINI_API_KEY) {
+    try {
+      const { data: allowed } = await admin.rpc("begin_email_ai_read", { p_inbound_token: token });
+      if (allowed === true) {
+        const { raw } = await extractStatementFromText(maskForAi(text));
+        if (raw) e = mergeWithAi(e, statementFromEmailAi(raw, text));
+      }
+    } catch { /* keep the rule-based result */ }
+  }
   const { error } = await admin.rpc("ingest_emailed_statement", {
     p_inbound_token: token, p_sender: body.from?.slice(0, 200) ?? null, p_file_path: filePath, p_file_name: fileName,
     p_kind: text.trim() ? e.kind : "unreadable", p_provider: e.provider.value, p_amount_cents: e.amountDueCents.value, p_due_date: e.dueDate.value,

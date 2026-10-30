@@ -152,6 +152,9 @@ export function statementKey(e: Pick<Extraction, "provider" | "accountLast4" | "
 }
 
 export const VISION_PARSER_VERSION = "vision-1";
+export const EMAIL_AI_PARSER_VERSION = "email-ai-1";
+/** The most email text ever sent to the model. */
+export const EMAIL_AI_MAX_CHARS = 8000;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
@@ -159,7 +162,7 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
  * Same contract as the text parser: a field the model wasn't sure of is "ambiguous",
  * so it goes to human review rather than being trusted.
  */
-export function statementFromVision(raw: unknown): Extraction {
+export function statementFromVision(raw: unknown, source: "photo" | "email" = "photo"): Extraction {
   const o = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   const conf = (k: string) => (typeof o[`${k}_confidence`] === "number" ? (o[`${k}_confidence`] as number) : 0);
   const str = (k: string, max = 80) => (typeof o[k] === "string" && (o[k] as string).trim() ? (o[k] as string).trim().slice(0, max) : null);
@@ -171,7 +174,7 @@ export function statementFromVision(raw: unknown): Extraction {
   const provider = field(str("provider"), conf("provider"));
   const amountDueCents = field(cents, conf("amount_due"));
   const dueDate = field(date("due_date"), conf("due_date"));
-  const reasons: string[] = ["Read from a photo. Check every field against the original."];
+  const reasons: string[] = [source === "email" ? "Read by AI from the email. Check every field against the original." : "Read from a photo. Check every field against the original."];
   if (provider.status !== "found") reasons.push(provider.status === "ambiguous" ? "Provider name was hard to read" : "Provider not found");
   if (amountDueCents.status !== "found") reasons.push(amountDueCents.status === "ambiguous" ? "Amount due was hard to read" : "Amount due not found");
   if (dueDate.status !== "found") reasons.push(dueDate.status === "ambiguous" ? "Due date was hard to read" : "Due date not found");
@@ -187,6 +190,85 @@ export function statementFromVision(raw: unknown): Extraction {
     statementId: str("statement_number", 40),
     needsReview: true, // photos are always checked by a person
     reasons,
-    parserVersion: VISION_PARSER_VERSION,
+    parserVersion: source === "email" ? EMAIL_AI_PARSER_VERSION : VISION_PARSER_VERSION,
+  };
+}
+
+// ---------- AI fallback for emailed bills ----------
+// The rule-based parser runs first. Only when it cannot find the amount or due date is the text sent to
+// the model. The model is untrusted: it only fills the fixed bill fields, every value must appear in
+// the email itself, and the result always goes to human review.
+
+/** Masks long digit runs (account numbers, phone numbers) before text leaves for the model. The last 4 digits stay. */
+export function maskForAi(text: string): string {
+  return text
+    .replace(/\d[\d -]{7,}\d/g, (m) => {
+      const d = m.replace(/\D/g, "");
+      return d.length >= 9 ? `••••${d.slice(-4)}` : m;
+    })
+    .slice(0, EMAIL_AI_MAX_CHARS);
+}
+
+function textHasAmount(text: string, cents: number): boolean {
+  const [whole, frac] = (cents / 100).toFixed(2).split(".");
+  const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return new RegExp(`(?<![\\d.,])(?:${whole}|${withCommas})\\.${frac}(?!\\d)`).test(text);
+}
+function textHasDate(text: string, iso: string): boolean {
+  for (const m of text.matchAll(new RegExp(DATE, "gi"))) if (toISODate(m[1]) === iso) return true;
+  return false;
+}
+function textHasLast4(text: string, last4: string): boolean {
+  return (text.match(/\d[\d -]*\d/g) ?? []).some((run) => run.replace(/\D/g, "").endsWith(last4));
+}
+
+/**
+ * Builds an Extraction from what the model read in an email. Any value that does not literally appear
+ * in the original text is thrown away (a wrong amount from a mistake or a planted instruction).
+ */
+export function statementFromEmailAi(raw: unknown, original: string): Extraction {
+  const o = { ...(typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {}) };
+  const dropped: string[] = [];
+  const drop = (key: string, label: string) => { o[key] = null; dropped.push(label); };
+
+  if (typeof o.amount_due_cents === "number" && Number.isSafeInteger(o.amount_due_cents) && !textHasAmount(original, o.amount_due_cents)) drop("amount_due_cents", "amount due");
+  for (const [k, label] of [["due_date", "due date"], ["period_start", "billing period"], ["period_end", "billing period"]] as const) {
+    if (typeof o[k] === "string" && !textHasDate(original, o[k] as string)) drop(k, label);
+  }
+  if (typeof o.provider === "string" && !original.toLowerCase().includes((o.provider as string).trim().toLowerCase())) drop("provider", "provider");
+  if (typeof o.account_last4 === "string" && !textHasLast4(original, o.account_last4)) drop("account_last4", "account digits");
+  if (typeof o.statement_number === "string" && !original.includes((o.statement_number as string).trim())) drop("statement_number", "statement number");
+
+  const e = statementFromVision(o, "email");
+  if (dropped.length) e.reasons.push(`The AI gave values that are not in the email, so they were ignored: ${[...new Set(dropped)].join(", ")}`);
+  return e;
+}
+
+/** Keeps every field the rule-based parser found; fills only the gaps from the AI reading. */
+export function mergeWithAi(local: Extraction, ai: Extraction): Extraction {
+  const pick = <T extends { status: FieldStatus }>(a: T, b: T): T => (a.status === "found" ? a : b.status === "found" ? b : a);
+  const provider = pick(local.provider, ai.provider);
+  const amountDueCents = pick(local.amountDueCents, ai.amountDueCents);
+  const dueDate = pick(local.dueDate, ai.dueDate);
+  const hasPeriod = local.periodStart && local.periodEnd;
+  const periodStart = hasPeriod ? local.periodStart : ai.periodStart;
+  const periodEnd = hasPeriod ? local.periodEnd : ai.periodEnd;
+
+  const reasons = ["Some fields were read by AI. Check every field against the original."];
+  if (provider.status !== "found") reasons.push("Provider not recognized");
+  if (amountDueCents.status !== "found") reasons.push("Amount due not found");
+  if (dueDate.status !== "found") reasons.push("Due date not found");
+  if (amountDueCents.value !== null && amountDueCents.value >= LARGE_AMOUNT_CENTS) reasons.push("Amount is unusually large");
+  if (amountDueCents.value === 0) reasons.push("Amount due is $0.00");
+  reasons.push(...local.reasons.filter((r) => r.startsWith("Card charge")), ...ai.reasons.filter((r) => r.startsWith("The AI gave")));
+
+  return {
+    kind: amountDueCents.status === "found" || dueDate.status === "found" ? "statement" : local.kind,
+    provider, amountDueCents, dueDate, periodStart, periodEnd,
+    accountLast4: local.accountLast4 ?? ai.accountLast4,
+    statementId: local.statementId ?? ai.statementId,
+    needsReview: true,
+    reasons,
+    parserVersion: `${local.parserVersion}+${EMAIL_AI_PARSER_VERSION}`,
   };
 }
