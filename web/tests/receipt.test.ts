@@ -108,3 +108,24 @@ describe("receiptNote", () => {
     expect(note).toBe("Receipt from Patel Brothers: 2 items. Not shared by everyone: Mango pickle $18.00 (Raj).");
   });
 });
+
+describe("a bag line reported twice", () => {
+  const metro = {
+    is_receipt: true, store: "Metro Market", date: "2026-09-26",
+    items: [["Swad Soya Wadi 400g", 798], ["Everest Pav Bhaji Masala", 299], ["Swad Iodized Salt 1 lb", 149], ["Fresh Jowar Chakli 1 lb", 549], ["Lime Fresh", 49], ["Bag", 15]].map(([label, amount_cents]) => ({ label, quantity: 1, amount_cents, confidence: 0.9 })),
+    discounts: [], subtotal_cents: 1859, tax_cents: 23, tip_cents: 0, fees_cents: 15, total_cents: 1882,
+  };
+  it("drops the duplicate fee so the receipt matches the printed total", () => {
+    const out = receiptFromModel(metro);
+    expect(out && out.ok && out.receipt.feesCents).toBe(0);
+    expect(out && out.ok && reconcileDifference(out.receipt)).toBe(0);
+  });
+  it("leaves a real separate fee alone", () => {
+    const out = receiptFromModel({ ...metro, fees_cents: 15, total_cents: 1897, items: metro.items.slice(0, 5), subtotal_cents: 1844 });
+    expect(out && out.ok && out.receipt.feesCents).toBe(15);
+  });
+  it("does not change a receipt that already adds up", () => {
+    const out = receiptFromModel({ ...metro, fees_cents: 0 });
+    expect(out && out.ok && out.receipt.feesCents).toBe(0);
+  });
+});

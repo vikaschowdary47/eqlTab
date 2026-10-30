@@ -119,6 +119,19 @@ function lcm(a: bigint, b: bigint): bigint {
   return (a / gcd(a, b)) * b;
 }
 
+/**
+ * A line printed among the items ("Bag $0.15") is sometimes also reported as a fee, so it is counted twice and the lines
+ * overshoot the printed total. When the overshoot is exactly one item's price and fees cover it, remove it from the fees:
+ * the receipt then matches its own printed total. Anything else is left for the person to check.
+ */
+export function withoutDoubleCountedFee(r: Receipt): Receipt {
+  const diff = reconcileDifference(r);
+  if (diff === null || diff >= 0) return r;
+  const surplus = -diff;
+  if (r.feesCents >= surplus && r.items.some((i) => i.amountCents === surplus)) return { ...r, feesCents: r.feesCents - surplus };
+  return r;
+}
+
 /** Validates the model's JSON. Anything off-schema is rejected, never guessed. */
 export function receiptFromModel(raw: unknown): { ok: true; receipt: Receipt } | { ok: false; error: string } | null {
   if (!raw || typeof raw !== "object") return null;
@@ -159,13 +172,11 @@ export function receiptFromModel(raw: unknown): { ok: true; receipt: Receipt } |
   if (total !== null && Number.isNaN(total)) return null;
   const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
   const date = str(o.date, 10);
-  return {
-    ok: true,
-    receipt: {
-      store: str(o.store, 60), date: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
-      items, taxCents: tax, tipCents: tip, feesCents: fees, orderDiscountCents: orderDiscount, printedTotalCents: total,
-    },
+  const receipt: Receipt = {
+    store: str(o.store, 60), date: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+    items, taxCents: tax, tipCents: tip, feesCents: fees, orderDiscountCents: orderDiscount, printedTotalCents: total,
   };
+  return { ok: true, receipt: withoutDoubleCountedFee(receipt) };
 }
 
 /** Short plain-text record of who had what, saved as the bill's note so the split is explainable. */
