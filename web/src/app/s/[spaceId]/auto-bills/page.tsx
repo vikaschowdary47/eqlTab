@@ -36,13 +36,11 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
   const { data: gmailConnection } = ctx.me?.user_id ? await gmail.from("gmail_connections").select("gmail_address, status").eq("user_id", ctx.me.user_id).eq("status", "active").maybeSingle() : { data: null };
 
   return (
-    <div className="auto-bills-stage relative space-y-10 max-w-[920px]">
-      <div className="heikei-art" aria-hidden="true"><span className="heikei-seed" /><span className="heikei-seed" /><span className="heikei-seed" /></div>
-      <header className="rise max-w-[680px]">
+    <div className="space-y-6 max-w-[920px]">
+      <header className="rise">
         <Link href={`/s/${spaceId}/bills`} className="inline-flex items-center gap-2 text-[14px] font-medium text-ink-2 hover:text-ink transition-colors">← <span>Bills</span></Link>
-        <p className="mt-8 text-[12px] font-semibold uppercase tracking-[0.18em] text-brand-ink">Inbox to shared</p>
-        <h1 className="mt-3 text-[clamp(36px,7vw,64px)] font-semibold tracking-[-0.065em] leading-[.95]">Auto Bills<span className="text-brand-strong">.</span></h1>
-        <p className="text-ink-2 mt-5 max-w-[56ch] text-[16px] leading-7">Statements arrive here. We read the provider, amount, due date, and billing period. You check the details, then everyone sees their share.</p>
+        <h1 className="mt-3 text-[clamp(28px,5vw,40px)] font-semibold tracking-[-0.05em] leading-none">Auto Bills<span className="text-brand-strong">.</span></h1>
+        <p className="text-ink-2 mt-2 max-w-[60ch] text-[15px] leading-6">Bills arrive here. We read the provider, amount and due date, you check them, then everyone sees their share.</p>
       </header>
 
       {missing.map((m) => (
@@ -50,6 +48,24 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
           The last one covered a period ending {m.lastPeriodEnd ? formatDate(m.lastPeriodEnd) : "over a month ago"}. That doesn't mean it's paid. Check the provider's site or your email, then upload the statement.
         </Notice>
       ))}
+
+      {ctx.me && (
+        <div className="grid md:grid-cols-2 gap-4 items-start rise-2">
+          <section id="forwarding" aria-labelledby="fw" className="space-y-2 scroll-mt-24">
+            <div className="flex items-center justify-between"><h2 id="fw" className="text-[16px] font-semibold tracking-[-0.01em]">Forward bill emails</h2>{forwardingLive ? <Chip tone="success">On</Chip> : <Chip>Coming soon</Chip>}</div>
+            <Card className="p-4 space-y-3">
+              {!forwardingLive && <Notice tone="neutral" title="Forwarding isn't switched on yet">Your address is reserved for this Space. Until forwarding is on, upload the PDF or a photo of the bill instead.</Notice>}
+              <CopyField label="This Space's private address" value={address} mono />
+              <ForwardingGuide address={address} code={fwCode ? { code: fwCode.code, receivedAt: fwCode.received_at } : null} />
+              <p className="text-[12px] text-muted">If a provider only emails "your bill is ready", we'll ask you for the amount instead of guessing.</p>
+            </Card>
+          </section>
+          <section aria-labelledby="gmail" className="space-y-2">
+            <div className="flex items-center justify-between"><h2 id="gmail" className="text-[16px] font-semibold tracking-[-0.01em]">Connect Gmail</h2><Chip tone={gmailConnection ? "success" : "neutral"}>{gmailConnection ? "Connected" : "Optional"}</Chip></div>
+            <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} scanStats={scanStats} companies={chosenSources.map((x) => x.name)} />
+          </section>
+        </div>
+      )}
 
       {open.length > 0 && (
         <section aria-labelledby="todo">
@@ -59,32 +75,22 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
       )}
 
       {ctx.me && (
-        <section id="companies" aria-label="Who sends your bills" className="rise-2 scroll-mt-24">
-          <BillSources spaceId={spaceId} state={billSources?.state ?? null} sources={chosenSources} gmailConnected={!!gmailConnection} />
+        <section aria-labelledby="up" className="space-y-2">
+          <h2 id="up" className="text-[16px] font-semibold tracking-[-0.01em]">Or upload a bill</h2>
+          <UploadStatement spaceId={spaceId} />
         </section>
       )}
 
       {ctx.me && (
-        <div className="grid md:grid-cols-2 gap-6 items-start">
-          <section aria-labelledby="up" className="space-y-3">
-            <div className="flex items-center justify-between"><h2 id="up" className="text-[17px] font-semibold tracking-[-0.01em]">Upload a statement</h2><Chip tone="success">Available</Chip></div>
-            <UploadStatement spaceId={spaceId} />
-          </section>
-
-          <section id="forwarding" aria-labelledby="fw" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center justify-between"><h2 id="fw" className="text-[17px] font-semibold tracking-[-0.01em]">Forward bill emails</h2>{forwardingLive ? <Chip tone="success">On</Chip> : <Chip>Coming soon</Chip>}</div>
-            <Card className="p-5 space-y-4">
-              {!forwardingLive && <Notice tone="neutral" title="Forwarding isn't switched on yet">Your address is reserved for this Space. Until forwarding is on, upload the PDF or a photo of the bill instead.</Notice>}
-              <CopyField label="This Space's private address" value={address} mono />
-              <ForwardingGuide address={address} code={fwCode ? { code: fwCode.code, receivedAt: fwCode.received_at } : null} />
-              <p className="text-[13px] text-muted">Many providers only email "your bill is ready" with a sign-in link. When that happens we'll ask you for the statement instead of guessing the amount.</p>
-            </Card>
-          </section>
-          <section aria-labelledby="gmail" className="space-y-3">
-            <div className="flex items-center justify-between"><h2 id="gmail" className="text-[17px] font-semibold tracking-[-0.01em]">Connect Gmail</h2><Chip tone={gmailConnection ? "success" : "neutral"}>{gmailConnection ? "Connected" : "Optional"}</Chip></div>
-            <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} scanStats={scanStats} companies={chosenSources.map((x) => x.name)} />
-          </section>
-        </div>
+        <details id="companies" className="group rounded-[14px] ring-1 ring-line bg-surface scroll-mt-24" open={chosenSources.length === 0 && !!gmailConnection}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[15px] font-medium">
+            <span>Which companies should Gmail look for?{chosenSources.length > 0 && <span className="ml-2 text-[13px] font-normal text-muted">{chosenSources.length} chosen</span>}</span>
+            <span className="text-muted transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+          </summary>
+          <div className="px-4 pb-4">
+            <BillSources spaceId={spaceId} state={billSources?.state ?? null} sources={chosenSources} gmailConnected={!!gmailConnection} />
+          </div>
+        </details>
       )}
 
       {done.length > 0 && (
