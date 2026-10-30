@@ -50,3 +50,16 @@ export function dueSoonEmail(i: { billTitle: string; owedCents: number; daysLeft
     { label: "Open the bill", url: i.url }, FOOTER,
   );
 }
+
+/** The invite for someone who hasn't joined. Everything in it comes from the server's own records, never from the sender's typing. */
+export function inviteEmail(i: { inviterName: string; personName: string; spaceNames: string[]; url: string }): EmailContent {
+  const groups = i.spaceNames.filter((n) => !/^you & /i.test(n));
+  const parts = [...groups, ...(groups.length < i.spaceNames.length ? ["a shared balance"] : [])];
+  const where = parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+  return build(
+    `${i.inviterName} invited you to ${where || "eqlTab"} on eqlTab`,
+    [`Hi ${i.personName},`, `${i.inviterName} added you${where ? ` to ${where}` : ""} on eqlTab, so you can see what you owe and what you're owed.`, "This link is just for you and works once. It expires in 14 days."],
+    { label: "See my balance", url: i.url },
+    `If you don't know ${i.inviterName}, you can ignore this email. We never move money: eqlTab only keeps the record.`,
+  );
+}

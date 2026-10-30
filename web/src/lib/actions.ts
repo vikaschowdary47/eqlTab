@@ -8,6 +8,9 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { splitBill, type ShareInput, type SplitMethod } from "@/lib/domain/split";
 import { emailReminder, notifyNewBill } from "@/lib/notify";
+import { emailEnabled, sendEmail } from "@/lib/email";
+import { inviteEmail } from "@/lib/domain/email-templates";
+import { createHash } from "node:crypto";
 import { SPACE_TYPES } from "@/lib/domain/spaces";
 import { extractStatement, statementFromVision, statementKey, type Extraction } from "@/lib/domain/statement";
 import { extractQuickAdd, extractReceipt, extractStatementFromImage, sniffImageType } from "@/lib/import/extract";
@@ -494,6 +497,34 @@ export async function createPersonClaimAction(personId: string): Promise<Result<
   const { data, error } = await supabase.rpc("create_person_claim", { p_person: personId });
   if (error) return { ok: false, error: friendly(error) };
   return { ok: true, data: { url: `${env.siteUrl()}/claim/${data}` } };
+}
+
+/**
+ * Emails a personal invite for someone who hasn't joined. The address is used once and not stored. The sender cannot
+ * write any of the text: the link must be a live claim this person created, and the names come from our own records.
+ */
+export async function emailInviteAction(link: string, email: string): Promise<Result> {
+  const to = String(email ?? "").trim();
+  if (to.length > 254 || !/^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(to)) return { ok: false, error: "That doesn't look like an email address." };
+  const prefix = `${env.siteUrl()}/claim/`;
+  const token = link.startsWith(prefix) ? link.slice(prefix.length) : "";
+  if (!/^[0-9a-f]{64}$/.test(token)) return { ok: false, error: "That invite link isn't valid. Create a new one." };
+  if (!emailEnabled()) return { ok: false, error: "Sending email isn't switched on yet. Use Text or your own email app instead." };
+  const user = await getUser();
+  const admin = supabaseAdmin();
+  if (!user || !admin) return { ok: false, error: MESSAGES.forbidden };
+  // The link must be a live claim created by this person
+  const { data: claim } = await admin.from("person_claims").select("created_by").eq("token_hash", createHash("sha256").update(token).digest("hex")).maybeSingle();
+  if (!claim || claim.created_by !== user.id) return { ok: false, error: "That invite link isn't valid. Create a new one." };
+  const supabase = await supabaseServer();
+  const { data: allowed } = await supabase.rpc("begin_invite_email");
+  if (allowed !== true) return { ok: false, error: "You've sent the most invite emails for today. Use Copy link or Text instead." };
+  const { data: rows } = await admin.rpc("preview_person_claim", { p_token: token, p_client_key: createHash("sha256").update(user.id).digest("hex") });
+  const p = (rows as { valid: boolean; inviter_name: string | null; person_name: string | null; spaces: { name: string }[] }[] | null)?.[0];
+  if (!p?.valid) return { ok: false, error: "That invite link has expired. Create a new one." };
+  const content = inviteEmail({ inviterName: p.inviter_name ?? "Someone", personName: p.person_name ?? "there", spaceNames: (p.spaces ?? []).map((x) => x.name), url: link });
+  if (!(await sendEmail(to, content, "invite"))) return { ok: false, error: "We couldn't send that email. Try Text or your own email app." };
+  return { ok: true, data: undefined };
 }
 
 export async function revokePersonClaimsAction(spaceId: string, personId: string): Promise<Result> {

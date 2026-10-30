@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Result } from "@/lib/actions";
+import { emailInviteAction, type Result } from "@/lib/actions";
 import { Button, Field, Input, Notice, cx } from "@/components/ui";
 import { APP_NAME } from "@/lib/brand";
 
@@ -49,6 +49,12 @@ export function PersonInvite({ name, spaceNames, url, onCreate, contact }: {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  // How to reach them is typed here when it isn't already known. It stays in this tab's memory only: never stored.
+  const [ask, setAsk] = useState<"phone" | "email" | null>(null);
+  const [typed, setTyped] = useState({ phone: contact?.phone ?? "", email: contact?.email ?? "" });
+  const [sending, setSending] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   useEffect(() => { setLink(url); }, [url]);
   useEffect(() => { setCanShare(typeof navigator.share === "function"); }, []);
   const text = inviteMessage(spaceNames);
@@ -67,6 +73,13 @@ export function PersonInvite({ name, spaceNames, url, onCreate, contact }: {
       if ((e as Error).name !== "AbortError") await copy();
     }
   }
+  async function sendEmail() {
+    setSending(true); setSendError(null); setSentTo(null);
+    const r = await emailInviteAction(link!, typed.email);
+    setSending(false);
+    if (!r.ok) return setSendError(r.error);
+    setSentTo(typed.email.trim());
+  }
   async function copy() {
     setCopied(await copyText(`${text}: ${link}`));
     setTimeout(() => setCopied(false), 1800);
@@ -78,13 +91,35 @@ export function PersonInvite({ name, spaceNames, url, onCreate, contact }: {
       {error && <p className="text-[12px] text-error max-w-[220px] text-right">{error}</p>}
     </div>
   );
+  const body = `${text}: ${link}`;
+  const smsHref = `sms:${typed.phone.replace(/[^\d+]/g, "")}${/iP(hone|ad)/.test(navigator.userAgent) ? "&" : "?"}body=${encodeURIComponent(body)}`;
+  const mailHref = `mailto:${encodeURIComponent(typed.email.trim())}?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(body)}`;
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {canShare && <Button size="sm" onClick={share}>Share</Button>}
       <Button size="sm" variant={canShare ? "secondary" : "primary"} onClick={copy} aria-live="polite">{copied ? "Copied" : "Copy link"}</Button>
-      {contact?.phone && <a className={pill} href={`sms:${contact.phone.replace(/[^\d+]/g, "")}${/iP(hone|ad)/.test(navigator.userAgent) ? "&" : "?"}body=${encodeURIComponent(`${text}: ${link}`)}`}>Text</a>}
-      {contact?.email && <a className={pill} href={`mailto:${encodeURIComponent(contact.email)}?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(`${text}: ${link}`)}`}>Email</a>}
+      <Button size="sm" variant="secondary" aria-pressed={ask === "phone"} onClick={() => setAsk(ask === "phone" ? null : "phone")}>Text</Button>
+      <Button size="sm" variant="secondary" aria-pressed={ask === "email"} onClick={() => setAsk(ask === "email" ? null : "email")}>Email</Button>
       <span className="sr-only">Personal link for {name}</span>
+      {ask === "phone" && (
+        <div className="w-full flex flex-wrap items-center justify-end gap-2">
+          <Input aria-label={`${name}'s phone number`} type="tel" inputMode="tel" autoComplete="off" placeholder={`${name}'s phone number`} className="max-w-[220px]" value={typed.phone} onChange={(e) => setTyped({ ...typed, phone: e.target.value })} />
+          {typed.phone.replace(/\D/g, "").length >= 7 ? <a className={pill} href={smsHref}>Open Messages</a> : <span className="text-[12px] text-muted">Opens your Messages app with the invite ready to send.</span>}
+        </div>
+      )}
+      {ask === "email" && (
+        <div className="w-full flex flex-wrap items-center justify-end gap-2">
+          <Input aria-label={`${name}'s email address`} type="email" autoComplete="off" placeholder={`${name}'s email`} className="max-w-[240px]" value={typed.email} onChange={(e) => { setTyped({ ...typed, email: e.target.value }); setSentTo(null); }} />
+          {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed.email.trim()) && (
+            <>
+              <Button size="sm" loading={sending} onClick={sendEmail}>Send for me</Button>
+              <a className={pill} href={mailHref}>Open my email app</a>
+            </>
+          )}
+          {sentTo && <p role="status" className="w-full text-right text-[12px] text-success">Sent to {sentTo}. We don't keep the address.</p>}
+          {sendError && <p role="alert" className="w-full text-right text-[12px] text-error">{sendError}</p>}
+        </div>
+      )}
     </div>
   );
 }

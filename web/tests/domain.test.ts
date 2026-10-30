@@ -3,7 +3,7 @@ import { parseDollars, formatUSD } from "@/lib/domain/money";
 import { splitBill, percentToBps } from "@/lib/domain/split";
 import { memberTotals, splitPosition, reportableCents, type SplitLike } from "@/lib/domain/balances";
 import { dueState } from "@/lib/domain/due";
-import { newBillEmail, reminderEmail, dueSoonEmail } from "@/lib/domain/email-templates";
+import { newBillEmail, reminderEmail, dueSoonEmail, inviteEmail } from "@/lib/domain/email-templates";
 import { daysUntil, shouldSendDueReminder } from "@/lib/domain/reminders";
 import { extractStatement, maskForAi, mergeWithAi, statementFromEmailAi, statementKey, toISODate } from "@/lib/domain/statement";
 
@@ -239,5 +239,15 @@ describe("emails and due-date reminders", () => {
     expect(shouldSendDueReminder({ split: split({ settlements: [{ amountCents: 5845, status: "confirmed" }] }), daysLeft: 2, reminderDays: null, optOut: false })).toBe(false);
     expect(shouldSendDueReminder({ split: split({ settlements: [{ amountCents: 5845, status: "reported" }] }), daysLeft: 2, reminderDays: null, optOut: false })).toBe(false);
     expect(shouldSendDueReminder({ split: split(), daysLeft: -1, reminderDays: [1], optOut: false })).toBe(false);
+  });
+});
+
+describe("invite email", () => {
+  it("is built only from server-side names, escaped, in one-line subject", () => {
+    const e = inviteEmail({ inviterName: "Vikas", personName: "<i>Ana</i>", spaceNames: ["26 Bagley", "You & Ana"], url: "https://eqltab.com/claim/abc" });
+    expect(e.subject).toBe("Vikas invited you to 26 Bagley and a shared balance on eqlTab");
+    expect(e.html).toContain("&lt;i&gt;Ana&lt;/i&gt;");
+    expect(e.text).toContain("https://eqltab.com/claim/abc");
+    expect(e.text).toContain("works once");
   });
 });
