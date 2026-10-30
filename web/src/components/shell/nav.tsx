@@ -9,6 +9,7 @@ const ICONS = {
   home: <path d="M4 10.5 12 4l8 6.5V20h-5v-6h-6v6H4z" />,
   bills: <><rect x="5" y="3.5" width="14" height="17" rx="2.5" /><path d="M9 8.5h6M9 12h6M9 15.5h3.5" /></>,
   activity: <path d="M3.5 12h4l2.5-6 4 12 2.5-6h4" />,
+  autobills: <><path d="M4 7l8 6 8-6" /><rect x="3" y="5" width="18" height="14" rx="2.5" /></>,
   space: <><circle cx="9" cy="9" r="3" /><circle cx="17" cy="10" r="2.3" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M15 14.2c2.6-.4 4.6 1.2 5.3 4.3" /></>,
 };
 
@@ -21,16 +22,23 @@ export function navItems(spaceId: string) {
   ];
 }
 
-function isActive(path: string, href: string, exact?: boolean) {
-  return exact ? path === href : path === href || path.startsWith(href + "/") || (href.endsWith("/bills") && path.includes("/auto-bills"));
+/** Auto Bills has its own entry in the side menu; on the phone tab bar it still lives under Bills. */
+function isActive(path: string, href: string, exact?: boolean, autoBillsHasOwnItem?: boolean) {
+  return exact ? path === href : path === href || path.startsWith(href + "/") || (!autoBillsHasOwnItem && href.endsWith("/bills") && path.includes("/auto-bills"));
+}
+
+/** The side menu has room for Auto Bills; the phone tab bar keeps four tabs plus Add. */
+function sideItems(spaceId: string) {
+  const base = navItems(spaceId);
+  return [base[0], base[1], { href: `/s/${spaceId}/auto-bills`, label: "Auto Bills", icon: ICONS.autobills, exact: false }, ...base.slice(2)];
 }
 
 export function SideNav({ spaceId }: { spaceId: string }) {
   const path = usePathname();
   return (
     <nav aria-label="Main" className="grid gap-0.5">
-      {navItems(spaceId).map((i) => {
-        const on = isActive(path, i.href, i.exact);
+      {sideItems(spaceId).map((i) => {
+        const on = isActive(path, i.href, i.exact, true);
         return (
           <Link key={i.href} href={i.href} aria-current={on ? "page" : undefined}
             className={cx("group flex items-center gap-3 h-10 px-3 rounded-[10px] text-[15px] transition-colors",
@@ -51,8 +59,10 @@ export function TabBar({ spaceId }: { spaceId: string }) {
     const on = isActive(path, i.href, i.exact);
     return (
       <Link key={i.href} href={i.href} aria-current={on ? "page" : undefined}
-        className={cx("flex-1 flex flex-col items-center justify-center gap-1 h-full text-[11px] transition-colors", on ? "text-brand-ink font-semibold" : "text-muted")}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={on ? 2 : 1.6} strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">{i.icon}</svg>
+        className={cx("flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[11px] transition-colors", on ? "text-brand-ink font-semibold" : "text-muted")}>
+        <span className={cx("grid place-items-center h-7 w-12 rounded-full transition-colors duration-300", on && "bg-brand-wash")}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={on ? 2 : 1.6} strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">{i.icon}</svg>
+        </span>
         {i.label}
       </Link>
     );
@@ -81,6 +91,8 @@ export function AddMenu({ spaceId, compact }: { spaceId: string; compact?: boole
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", close); };
   }, [open]);
   const items = [
+    { href: `/s/${spaceId}/quick`, t: "Quick add", d: "Type it: groceries 230 split with all" },
+    { href: `/s/${spaceId}/receipt`, t: "Scan a receipt", d: "Pick who had what, item by item" },
     { href: `/s/${spaceId}/bills/new`, t: "Expense or bill", d: "Enter an amount and split it" },
     { href: `/s/${spaceId}/auto-bills`, t: "Upload a statement", d: "We read it, you confirm it" },
     { href: `/import?from=${spaceId}`, t: "Import from Splitwise", d: "Bring balances over from screenshots" },
@@ -108,7 +120,13 @@ export function AddMenu({ spaceId, compact }: { spaceId: string; compact?: boole
   );
 }
 
-export function SpaceSwitcher({ current, spaces }: { current: { id: string; name: string; typeLabel: string }; spaces: { id: string; name: string; typeLabel: string }[] }) {
+type SpaceItem = { id: string; name: string; typeLabel: string; emoji: string };
+
+/**
+ * Section 20.2: the current Space is always obvious. A highlighted pill (shape + icon + name,
+ * never colour alone) that opens the list of Spaces. Switching is 2 taps.
+ */
+export function SpaceSwitcher({ current, spaces }: { current: SpaceItem; spaces: SpaceItem[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -123,29 +141,31 @@ export function SpaceSwitcher({ current, spaces }: { current: { id: string; name
   return (
     <div ref={ref} className="relative min-w-0">
       <button type="button" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2.5 w-full min-w-0 rounded-[12px] px-2 py-1.5 -mx-2 hover:bg-surface/70 text-left transition-colors">
-        <span className="grid place-items-center size-8 rounded-[10px] bg-ink text-white text-[13px] font-semibold shrink-0" aria-hidden="true">{current.name.slice(0, 1).toUpperCase()}</span>
+        className={cx("flex items-center gap-2.5 max-w-full min-w-0 rounded-full pl-1.5 pr-3.5 py-1.5 text-left transition-all",
+          "bg-brand-wash ring-1 ring-brand-strong/25 shadow-[0_1px_2px_rgba(33,58,50,0.06)] hover:ring-brand-strong/50 active:scale-[0.98]",
+          open && "ring-2 ring-brand-strong/60")}>
+        <span className="grid place-items-center size-8 rounded-full bg-surface text-[17px] shrink-0 ring-1 ring-brand-strong/15" aria-hidden="true">{current.emoji}</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold truncate leading-tight">{current.name}</span>
-          <span className="block text-[12px] text-muted leading-tight">{current.typeLabel}</span>
+          <span className="block text-[15px] font-semibold truncate leading-tight text-ink">{current.name}</span>
+          <span className="block text-[11.5px] text-brand-ink leading-tight">{current.typeLabel} · tap to switch</span>
         </span>
-        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className="text-muted shrink-0"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className={cx("text-brand-ink shrink-0 transition-transform", open && "rotate-180")}><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
         <span className="sr-only">Switch Space</span>
       </button>
       {open && (
-        <div role="menu" className="absolute z-40 top-[52px] left-0 w-[min(300px,calc(100vw-32px))] rounded-[16px] bg-surface ring-1 ring-line shadow-[0_24px_60px_-20px_rgba(11,26,24,0.35)] p-1.5 rise">
+        <div role="menu" className="absolute z-40 top-[56px] left-0 w-[min(320px,calc(100vw-32px))] rounded-[20px] bg-surface ring-1 ring-line shadow-[0_24px_60px_-20px_rgba(11,26,24,0.35)] p-1.5 rise">
           <p className="px-3 pt-2 pb-1 text-[12px] text-muted">Your Spaces</p>
           {spaces.map((s) => (
             <Link key={s.id} role="menuitem" href={`/s/${s.id}`} onClick={() => setOpen(false)} aria-current={s.id === current.id ? "true" : undefined}
-              className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 hover:bg-sunken">
-              <span className="grid place-items-center size-7 rounded-[8px] bg-sunken ring-1 ring-line text-[12px] font-semibold" aria-hidden="true">{s.name.slice(0, 1).toUpperCase()}</span>
-              <span className="flex-1 min-w-0"><span className="block text-[14px] font-medium truncate">{s.name}</span><span className="block text-[12px] text-muted">{s.typeLabel}</span></span>
-              {s.id === current.id && <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="var(--brand-strong)" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+              className={cx("flex items-center gap-3 rounded-[14px] px-3 py-2.5 hover:bg-sunken", s.id === current.id && "bg-brand-wash/60")}>
+              <span className="grid place-items-center size-9 rounded-full bg-sunken text-[17px]" aria-hidden="true">{s.emoji}</span>
+              <span className="flex-1 min-w-0"><span className="block text-[15px] font-medium truncate">{s.name}</span><span className="block text-[12px] text-muted">{s.typeLabel}</span></span>
+              {s.id === current.id && <svg width="16" height="16" viewBox="0 0 24 24" aria-label="Current Space"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="var(--brand-strong)" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
             </Link>
           ))}
           <div className="h-px bg-line my-1.5" />
-          <Link role="menuitem" href="/onboarding" className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 hover:bg-sunken text-[14px] font-medium">
-            <span className="grid place-items-center size-7 rounded-[8px] ring-1 ring-dashed ring-line-strong" aria-hidden="true">+</span>New Space or join one
+          <Link role="menuitem" href="/onboarding" className="flex items-center gap-3 rounded-[14px] px-3 py-2.5 hover:bg-sunken text-[14px] font-medium">
+            <span className="grid place-items-center size-9 rounded-full ring-1 ring-dashed ring-line-strong text-[16px]" aria-hidden="true">+</span>New Space or join with a link
           </Link>
         </div>
       )}

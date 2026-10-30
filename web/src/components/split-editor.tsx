@@ -7,10 +7,11 @@ import { Avatar, ShareBar, cx } from "./ui";
 
 export interface SplitMember { id: string; name: string; isMe: boolean }
 
-export function useSplit(members: SplitMember[], totalCents: number | null, defaultMethod: SplitMethod) {
-  const [method, setMethod] = useState<SplitMethod>(defaultMethod);
-  const [selected, setSelected] = useState<string[]>(members.map((m) => m.id));
-  const [values, setValues] = useState<Record<string, string>>({});
+/** `carried` is a split worked out elsewhere (Quick Add's "Edit details"), so the form starts with it instead of an equal split. */
+export function useSplit(members: SplitMember[], totalCents: number | null, defaultMethod: SplitMethod, carried?: { method: SplitMethod; selected: string[]; amounts: Record<string, string> } | null) {
+  const [method, setMethod] = useState<SplitMethod>(carried?.method ?? defaultMethod);
+  const [selected, setSelected] = useState<string[]>(carried?.selected ?? members.map((m) => m.id));
+  const [values, setValues] = useState<Record<string, string>>(carried?.amounts ?? {});
 
   const participants = members.filter((m) => selected.includes(m.id));
   const inputs: ShareInput[] = participants.map((m) => {
@@ -53,7 +54,7 @@ const METHODS: { key: SplitMethod; label: string }[] = [
 
 export function SplitEditor({ s, payerId }: { s: SplitState; payerId: string }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <fieldset>
         <legend className="text-[13px] font-medium text-ink-2 mb-2">Split between</legend>
         <div className="flex flex-wrap gap-2">

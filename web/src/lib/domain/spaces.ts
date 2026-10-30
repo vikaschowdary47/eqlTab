@@ -14,6 +14,9 @@ export const SPACE_PRESETS: Record<
   group: { label: "Group", blurb: "Friends, trips, events, and shared costs", nameExamples: ["Weekend Trip", "Tahoe 2026"], defaultSplit: "equal", autoBillsFirst: false, expenseNoun: "expense" },
 };
 
+/** One friendly mark per Space type, shown in the Space switcher pill (section 20.2). */
+export const SPACE_EMOJI: Record<SpaceType, string> = { shared_home: "🏠", couple: "💛", family: "👨‍👩‍👧", group: "🎒" };
+
 export function isSpaceType(v: unknown): v is SpaceType {
   return typeof v === "string" && (SPACE_TYPES as readonly string[]).includes(v);
 }

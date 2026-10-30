@@ -21,7 +21,7 @@ export interface Extraction {
   parserVersion: string;
 }
 
-export const PARSER_VERSION = "rules-1";
+export const PARSER_VERSION = "rules-2";
 /** Above this, a human must look even when every field parsed cleanly. */
 export const LARGE_AMOUNT_CENTS = 100_000;
 
@@ -44,7 +44,10 @@ const DATE =`(\\d{1,2}/\\d{1,2}/\\d{2,4}|(?:${MONTHS})[a-z]*\\.?\\s+\\d{1,2},?\\
 const MONEY = `\\$\\s?([\\d,]+\\.\\d{2})`;
 
 const AMOUNT_LABELS = /(total amount due|amount due|total due|please pay|balance due|new charges due)/i;
-const DUE_LABELS = /(payment due date|due date|due by|please pay by|pay by)/i;
+// Autopay services (e.g. Public Grid) give no due date, only when they'll take the payment: that's the date that matters.
+const DUE_LABELS = /(payment due date|due date|due by|please pay by|pay by|will be (?:withdrawn|charged|debited|drafted|paid) on|scheduled (?:for|on)|auto-?pay date)/i;
+/** "$97.62 payment will be withdrawn on …": what the card is actually charged, which can include a fee. */
+const CHARGE = /\$\s?([\d,]+\.\d{2})\s+(?:payment\s+)?will be (?:withdrawn|charged|debited|drafted)/i;
 
 export function toISODate(s: string): string | null {
   const t = s.trim().replace(/\.(?=\s)/, "");
@@ -123,6 +126,11 @@ export function extractStatement(text: string): Extraction {
   if (dueDate.status !== "found") reasons.push(dueDate.status === "ambiguous" ? "Found more than one due date" : "Due date not found");
   if (amountDueCents.value !== null && amountDueCents.value >= LARGE_AMOUNT_CENTS) reasons.push("Amount is unusually large");
   if (amountDueCents.value === 0) reasons.push("Amount due is $0.00");
+  const charge = text.match(CHARGE);
+  const chargeCents = charge ? parseDollars(charge[1]) : null;
+  if (chargeCents !== null && amountDueCents.value !== null && chargeCents > amountDueCents.value) {
+    reasons.push(`Card charge is $${(chargeCents / 100).toFixed(2)}, $${((chargeCents - amountDueCents.value) / 100).toFixed(2)} more than the bill (likely a fee). Decide whether to split the fee too.`);
+  }
 
   return {
     kind: looksLikeNotice ? "notice_only" : "statement",

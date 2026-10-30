@@ -20,6 +20,13 @@ export async function POST(req: Request) {
   const token = body?.to?.match(/bills\+([a-f0-9]{18})@/i)?.[1];
   if (!body || !token) return NextResponse.json({ error: "unknown_address" }, { status: 400 });
 
+  // Gmail's "confirm this forwarding address" email: keep only the code so a member can type it into Gmail. Never a bill.
+  if (/forwarding-noreply@google\.com/i.test(body.from ?? "") || /Gmail Forwarding Confirmation/i.test(body.text ?? "")) {
+    const code = (body.text ?? "").match(/confirmation code\D{0,40}(\d{6,10})/i)?.[1];
+    if (code) await admin.rpc("record_forwarding_code", { p_inbound_token: token, p_code: code });
+    return NextResponse.json({ ok: true });
+  }
+
   const pdf = (body.attachments ?? []).find((a) => a.contentType === "application/pdf" && a.contentBase64);
   let text = body.text ?? "";
   let filePath: string | null = null;

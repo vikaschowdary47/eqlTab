@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getMySpaces, getProfile, getSpaceContext, requireUser } from "@/lib/data";
-import { SPACE_PRESETS } from "@/lib/domain/spaces";
+import { SPACE_EMOJI, SPACE_PRESETS } from "@/lib/domain/spaces";
 import { signOutAction } from "@/lib/actions";
 import { AddMenu, SideNav, SpaceSwitcher, TabBar } from "@/components/shell/nav";
 import { Avatar, ButtonLink, Logo, Notice } from "@/components/ui";
@@ -26,8 +26,8 @@ export default async function SpaceLayout({ children, params }: { children: Reac
   }
 
   const label = (t: keyof typeof SPACE_PRESETS) => SPACE_PRESETS[t].label;
-  const current = { id: ctx.space.id, name: ctx.space.name, typeLabel: label(ctx.space.type) };
-  const list = spaces.map((s) => ({ id: s.id, name: s.name, typeLabel: label(s.type) }));
+  const current = { id: ctx.space.id, name: ctx.space.name, typeLabel: label(ctx.space.type), emoji: SPACE_EMOJI[ctx.space.type] };
+  const list = spaces.map((s) => ({ id: s.id, name: s.name, typeLabel: label(s.type), emoji: SPACE_EMOJI[s.type] }));
   if (!list.some((s) => s.id === current.id)) list.unshift(current);
   const name = profile?.display_name ?? "You";
   const readOnly = !ctx.me;

@@ -6,6 +6,7 @@ import { signOutAction } from "@/lib/actions";
 import { Card, buttonClass } from "@/components/ui";
 import { DisplayName, Invites, Members, Notifications, SpaceDetails } from "@/components/space-settings";
 import { ImportBanner } from "@/components/import/import-banner";
+import { UtilityHolders, type HolderRow } from "@/components/utility-holders";
 
 export const metadata: Metadata = { title: "Space" };
 
@@ -31,6 +32,8 @@ export default async function SpacePage({ params, searchParams }: { params: Prom
     getProfile(),
   ]);
   const sources = new Set(statements.filter((s) => s.provider).map((s) => s.provider));
+  const { data: holderRows } = await supabase.from("space_utility_holders").select("category, holder_member_id, holder_name, account_last4").eq("space_id", spaceId);
+  const holders: HolderRow[] = (holderRows ?? []).map((h) => ({ category: h.category, memberId: h.holder_member_id, name: h.holder_name, last4: h.account_last4 }));
 
   return (
     <div className="max-w-[980px]">
@@ -60,6 +63,12 @@ export default async function SpacePage({ params, searchParams }: { params: Prom
         <Section id="import" title="Import from Splitwise" desc="Bring over balances from a few screenshots.">
           <p className="text-[15px] text-ink-2">Open each Splitwise group, tap Balances and take a screenshot. Only balances come over, and the people in them get personal invite links.</p>
           <Link href={`/import?from=${spaceId}`} className={buttonClass("secondary", "sm") + " mt-4"}>Import from Splitwise</Link>
+        </Section>
+      )}
+
+      {ctx.me && (
+        <Section id="holders" title="Whose name is each bill in?" desc="So everyone knows who to ask, and who to pay back.">
+          <UtilityHolders spaceId={spaceId} members={ctx.active.map((m) => ({ id: m.id, name: m.name }))} holders={holders} />
         </Section>
       )}
 

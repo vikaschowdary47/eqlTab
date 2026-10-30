@@ -3,13 +3,14 @@ import type { Metadata } from "next";
 import { getActivity, getBills, getProfile, getSpaceContext, getStatements, getUnreadNotifications } from "@/lib/data";
 import { TopNotices } from "@/components/top-notices";
 import { buildAttention } from "@/lib/attention";
-import { memberTotals } from "@/lib/domain/balances";
+import { balancesByPerson } from "@/lib/domain/balances";
 import { formatDate, todayISO } from "@/lib/domain/due";
-import { formatUSD } from "@/lib/domain/money";
 import { SPACE_PRESETS } from "@/lib/domain/spaces";
 import { ActivityList } from "@/components/activity";
 import { BillRow } from "@/components/bill-row";
-import { ButtonLink, Card, Chip, EmptyState, Money, SectionTitle, ShareBar, cx } from "@/components/ui";
+import { ButtonLink, Card, Chip, EmptyState, FacePile, Money, SectionTitle, ShareBar, cx } from "@/components/ui";
+import { BalanceCards } from "@/components/balance-cards";
+import { QuickAdd } from "@/components/quick-add";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -31,7 +32,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
     id: s.id, memberId: s.member.id, amountCents: s.amount_cents, payerMemberId: b.payer.id,
     settlements: s.settlements.map((x) => ({ amountCents: x.amount_cents, status: x.status })),
   })));
-  const t = meId ? memberTotals(splits, meId) : { youOwe: 0, owedToYou: 0, youOwePending: 0, owedToYouPending: 0 };
+  const people = meId ? balancesByPerson(splits, meId) : { owedToMe: [], iOwe: [] };
 
   const myOpen = bills.filter((b) => b.mine && b.payer.id !== meId && b.mine.position.outstandingCents > 0);
   const nextDue = myOpen.filter((b) => b.due_date).sort((a, b) => a.due_date!.localeCompare(b.due_date!))[0];
@@ -40,6 +41,13 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
     .filter((b) => (b.payer.id === meId ? b.outstandingCents > 0 : (b.mine?.position.outstandingCents ?? 0) > 0))
     .slice(0, 5);
   const firstName = profile?.display_name.split(" ")[0];
+  const faces = (
+    <Link href={`/s/${spaceId}/space`} className="mt-2 inline-flex items-center gap-2 text-[13px] text-muted hover:text-ink">
+      <FacePile names={ctx.active.map((m) => (m.id === ctx.me?.id ? (profile?.display_name ?? m.name) : m.name))} size={26} />
+      {ctx.active.length === 1 ? "Just you so far · invite people" : `${ctx.active.length} people`}
+    </Link>
+  );
+  const quick = ctx.me ? <QuickAdd spaceId={spaceId} today={today} members={ctx.active.map((m) => ({ id: m.id, name: m.name, isMe: m.id === ctx.me!.id }))} /> : null;
 
   if (bills.length === 0 && statements.length === 0) {
     return (
@@ -48,7 +56,9 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
         <header className="rise">
           <p className="text-[14px] text-muted">{greeting()}{firstName ? `, ${firstName}` : ""}</p>
           <h1 className="text-[clamp(30px,5vw,40px)] font-semibold tracking-[-0.04em] leading-tight">{ctx.space.name}</h1>
+          {faces}
         </header>
+        {quick}
         <div className="grid lg:grid-cols-[1.15fr_1fr] gap-6 items-start">
           <EmptyState
             title={`No ${preset.expenseNoun}s yet`}
@@ -101,33 +111,16 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
         <div>
           <p className="text-[14px] text-muted">{greeting()}{firstName ? `, ${firstName}` : ""}</p>
           <h1 className="text-[clamp(28px,5vw,40px)] font-semibold tracking-[-0.04em] leading-tight">{ctx.space.name}</h1>
+          {faces}
         </div>
         {attention.length > 0 && <a href="#attention" className="hidden sm:inline-flex"><Chip tone="warning">{attention.length} {attention.length === 1 ? "thing needs" : "things need"} attention</Chip></a>}
       </header>
 
-      {/* Signature: the obligation card. Individual amounts only, never the Space total. */}
-      <section aria-label="Your balance" className="grid md:grid-cols-[1.4fr_1fr] gap-4 rise-2">
-        <div className="relative overflow-hidden rounded-[24px] bg-night text-white p-6 sm:p-8 grain">
-          <div aria-hidden="true" className="absolute -right-24 -top-24 size-72 rounded-full bg-brand/30 blur-3xl" />
-          <p className="text-[14px] text-white/65">Your share due</p>
-          <Money cents={t.youOwe} size="xl" className="block mt-2 text-white" />
-          <p className="mt-3 text-[15px] text-white/70">
-            {t.youOwe === 0 ? "You're all settled up." : `Across ${myOpen.length} ${myOpen.length === 1 ? "bill" : "bills"}${nextDue ? ` · next due ${formatDate(nextDue.due_date)}` : ""}`}
-          </p>
-          {t.youOwePending > 0 && <p className="mt-1 text-[14px] text-brand">{formatUSD(t.youOwePending)} reported, waiting for confirmation</p>}
-          {myOpen.length > 0 && (
-            <ShareBar tone="dark" className="mt-6"
-              parts={myOpen.map((b) => ({ key: b.id, cents: b.mine!.position.outstandingCents, state: b.mine!.position.pendingCents > 0 ? "pending" : "open" }))} />
-          )}
-        </div>
-        <div className="rounded-[24px] bg-surface ring-1 ring-line p-6 sm:p-8 flex flex-col">
-          <p className="text-[14px] text-muted">Owed to you</p>
-          <Money cents={t.owedToYou} size="lg" className="block mt-2" />
-          <p className="mt-3 text-[15px] text-muted">{t.owedToYou === 0 ? "Nobody owes you right now." : "From bills you paid upfront"}</p>
-          {t.owedToYouPending > 0 && <p className="mt-1 text-[14px] text-warning">{formatUSD(t.owedToYouPending)} reported, needs your confirmation</p>}
-          <div className="mt-auto pt-6"><ButtonLink href={`/s/${spaceId}/bills?f=upcoming`} variant="secondary" size="sm">See all bills</ButtonLink></div>
-        </div>
-      </section>
+      {/* Signature: what you owe and what you're owed, side by side (section 21.1). */}
+      <BalanceCards spaceId={spaceId} iOwe={people.iOwe} owedToMe={people.owedToMe}
+        people={ctx.members.map((m) => ({ id: m.id, name: m.name }))} nextDueLabel={nextDue ? formatDate(nextDue.due_date) : undefined} />
+
+      {quick}
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-8 items-start">
         <div className="space-y-10 min-w-0">

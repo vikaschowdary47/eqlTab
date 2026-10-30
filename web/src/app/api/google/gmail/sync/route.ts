@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { gmailAccessToken, findBillMessages, readBillMessage } from "@/lib/gmail-api";
+import { gmailAccessToken, findBillMessages, readBillMessage, readMessageSender } from "@/lib/gmail-api";
+import { classifyBillEmail, isFollowUpNotice } from "@/lib/domain/bill-senders";
+import { matchSource, senderAddress, sourcesSearchQuery, type BillSource, type LearnedSender } from "@/lib/domain/providers";
 import { extractStatement, statementKey } from "@/lib/domain/statement";
 
 export async function POST(req: Request) {
@@ -19,7 +21,13 @@ export async function POST(req: Request) {
 
   try {
     const token = await gmailAccessToken(connection);
-    const messages = await findBillMessages(token);
+    // Only the companies this household chose (section 21.4). No choices yet: ask first.
+    const { data: chosen } = await admin.from("space_bill_sources").select("sources, learned_senders").eq("space_id", spaceId).maybeSingle();
+    const sources = (chosen?.sources ?? []) as BillSource[];
+    let learned = (chosen?.learned_senders ?? []) as LearnedSender[];
+    const query = sourcesSearchQuery(sources, learned);
+    if (!query) return NextResponse.redirect(new URL(`${target}?gmail=pick_providers`, req.url));
+    const messages = await findBillMessages(token, query);
     const { data: space } = await admin.from("spaces").select("inbound_token").eq("id", spaceId).maybeSingle();
     if (!space) return NextResponse.json({ error: "space_not_found" }, { status: 404 });
     const messageIds = messages.map((message) => message.id);
@@ -30,8 +38,13 @@ export async function POST(req: Request) {
     const existing = existingQuery.data;
     const seen = new Set((existing ?? []).map((row) => row.statement_ref).filter((value): value is string => !!value));
     let imported = 0;
+    // What happened to each email, so the result can explain itself (no names, subjects or amounts).
+    const stats = { found: messages.length, already: 0, otherSender: 0, notBill: 0, duplicate: 0 };
+    // Pass 1: read and classify. Pass 2: save real bills first, then notices that aren't follow-ups of them.
+    type Candidate = { message: { id: string }; sender: string; company: NonNullable<ReturnType<typeof matchSource>>; parsed: Awaited<ReturnType<typeof readBillMessage>>; text: string; extraction: ReturnType<typeof extractStatement>; verdict: "statement" | "notice" };
+    const candidates: Candidate[] = [];
     for (const message of messages) {
-      if (seen.has(message.id)) continue;
+      if (seen.has(message.id)) { stats.already++; continue; }
       // Check immediately before processing too. This keeps repeated scans idempotent
       // even if the batch lookup is stale or contains duplicate legacy rows.
       const { data: existingRows, error: existingError } = await admin.from("statements")
@@ -43,8 +56,13 @@ export async function POST(req: Request) {
       if (existingError) throw new Error("gmail_dedupe_lookup_failed");
       if (existingRows?.length) {
         seen.add(message.id);
+        stats.already++;
         continue;
       }
+      // Double-check the sender from headers only; anything else is never downloaded.
+      const sender = await readMessageSender(message.id, token);
+      const company = matchSource(sender, sources, learned);
+      if (!company) { stats.otherSender++; continue; }
       const parsed = await readBillMessage(message.id, token);
       let text = `${parsed.subject}\n${parsed.from}\n${parsed.text}`;
       if (parsed.pdf) {
@@ -55,16 +73,39 @@ export async function POST(req: Request) {
         } catch { /* continue with the email body */ }
       }
       const extraction = extractStatement(text);
-      const billLanguage = /(bill|statement|invoice|amount due|balance due|payment due|utility|service period|billing period|pay by)/i.test(text);
-      const pdfNameSignal = !!parsed.pdf && /(bill|statement|invoice|utility|comed|xfinity|spectrum|verizon|att)/i.test(parsed.pdf.name);
-      const usefulDetail = extraction.provider.status === "found" || extraction.amountDueCents.status === "found" || extraction.dueDate.status === "found" || !!extraction.periodStart || !!extraction.periodEnd || !!extraction.statementId;
-      const isBillCandidate = billLanguage || pdfNameSignal;
-      const isNotice = extraction.kind === "notice_only";
-      if (!isBillCandidate || (!usefulDetail && !parsed.pdf && !isNotice)) continue;
+      // Marketing from the same companies is skipped; only real bills and "your bill is ready" notices are kept.
+      const verdict = classifyBillEmail({
+        subject: parsed.subject, hasPdf: !!parsed.pdf, pdfName: parsed.pdf?.name,
+        amountFound: extraction.amountDueCents.status === "found", dueDateFound: extraction.dueDate.status === "found",
+      });
+      if (process.env.NODE_ENV !== "production") console.info("[gmail-scan]", { from: parsed.from, subject: parsed.subject, verdict, amount: extraction.amountDueCents.status, due: extraction.dueDate.status, pdf: parsed.pdf?.name ?? null });
+      if (verdict === "skip") { stats.notBill++; continue; }
+      candidates.push({ message, sender, company, parsed, text, extraction, verdict });
+    }
+
+    const marks = candidates.map((c) => ({ company: c.company.name, verdict: c.verdict, date: c.parsed.date }));
+    candidates.sort((x, y) => (x.verdict === y.verdict ? 0 : x.verdict === "statement" ? -1 : 1));
+    for (const { message, sender, company, parsed, text, extraction, verdict } of candidates) {
+      if (isFollowUpNotice({ company: company.name, verdict, date: parsed.date }, marks)) { stats.duplicate++; continue; }
+      if (verdict === "notice") extraction.kind = "notice_only";
+      else if (extraction.kind === "notice_only") extraction.kind = "statement";
+      // The household told us who sends this bill, so that name wins. A Public Grid bill mentions ComEd
+      // (the delivery utility) in its text, but the bill, amount and due date are Public Grid's.
+      if (extraction.provider.value !== company.name) {
+        extraction.provider = { ...extraction.provider, value: company.name, status: "found" };
+        extraction.reasons = extraction.reasons.filter((r) => !/provider/i.test(r));
+        extraction.needsReview = extraction.reasons.length > 0;
+      }
+      // Remember the exact sender of a real bill, so later scans search for that address too.
+      const address = senderAddress(sender);
+      if (verdict === "statement" && address && !learned.some((l) => l.address === address) && learned.length < 30) {
+        learned = [...learned, { address, name: company.name, category: company.category }];
+        await admin.from("space_bill_sources").update({ learned_senders: learned }).eq("space_id", spaceId);
+      }
       const parsedKey = statementKey(extraction);
       if (parsedKey) {
         const { data: sameBills } = await admin.from("statements").select("amount_cents, due_date").eq("space_id", spaceId).eq("statement_key", parsedKey).limit(20);
-        if (sameBills?.some((row) => row.amount_cents === extraction.amountDueCents.value && row.due_date === extraction.dueDate.value)) continue;
+        if (sameBills?.some((row) => row.amount_cents === extraction.amountDueCents.value && row.due_date === extraction.dueDate.value)) { stats.duplicate++; continue; }
       }
       let filePath: string | null = null;
       let fileName: string | null = null;
@@ -82,7 +123,8 @@ export async function POST(req: Request) {
       if (!error) { imported++; seen.add(message.id); }
       else if (error.code !== "23505") throw new Error("gmail_import_failed");
     }
-    return NextResponse.redirect(new URL(`${target}?gmail=sync_success&count=${imported}`, req.url));
+    const q = new URLSearchParams({ gmail: "sync_success", count: String(imported), found: String(stats.found), already: String(stats.already), other: String(stats.otherSender), notbill: String(stats.notBill), dup: String(stats.duplicate) });
+    return NextResponse.redirect(new URL(`${target}?${q}`, req.url));
   } catch (error) {
     const reason = error instanceof Error && error.message === "gmail_token_revoked" ? "revoked" : "sync_error";
     await admin.from("gmail_connections").update({ status: reason === "revoked" ? "revoked" : "error", last_error: reason, updated_at: new Date().toISOString() }).eq("user_id", user.id);

@@ -56,15 +56,16 @@ export default async function BillsPage({ params, searchParams }: { params: Prom
         {ctx.me && <ButtonLink href={`/s/${spaceId}/bills/new`} className="hidden sm:inline-flex">Add {preset.expenseNoun}</ButtonLink>}
       </header>
 
-      <Link href={`/s/${spaceId}/auto-bills`} className="group flex items-center gap-4 rounded-[18px] bg-night text-white p-5 grain overflow-hidden relative rise-2">
-        <span className="grid place-items-center size-11 rounded-[12px] bg-white/10 ring-1 ring-white/15 shrink-0" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7l8 6 8-6" /><rect x="3" y="5" width="18" height="14" rx="2.5" /></svg>
+      <Link href={`/s/${spaceId}/auto-bills`} className="group flex items-center gap-3 rounded-[14px] bg-surface ring-1 ring-line hover:ring-brand-strong/30 px-4 py-3 transition-shadow rise-2">
+        <span className="grid place-items-center size-9 rounded-[10px] bg-brand-wash text-brand-ink shrink-0" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7l8 6 8-6" /><rect x="3" y="5" width="18" height="14" rx="2.5" /></svg>
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block font-semibold">Auto Bills</span>
-          <span className="block text-[14px] text-white/65">{pendingReview ? `${pendingReview} ${pendingReview === 1 ? "statement needs" : "statements need"} your review` : "Upload or forward statements. We read them, you confirm."}</span>
+          <span className="block text-[15px] font-semibold">Auto Bills</span>
+          <span className="block text-[13px] text-muted truncate">Bring in bills from email or a PDF. We read them, you confirm.</span>
         </span>
-        <span aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+        {pendingReview ? <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-brand-wash text-brand-ink text-[12px] font-semibold shrink-0">{pendingReview} to review</span> : null}
+        <span aria-hidden="true" className="text-muted transition-transform duration-300 group-hover:translate-x-1">→</span>
       </Link>
 
       <nav aria-label="Filter bills" className="flex gap-1 p-1 rounded-[14px] bg-sunken ring-1 ring-line w-full sm:w-fit overflow-x-auto">

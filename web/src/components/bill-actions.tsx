@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import {
   confirmSettlementAction, disputeSettlementAction, disputeSplitAction, reportSettlementAction, reportUtilityPaidAction,
   resolveDisputeAction, sendReminderAction, statementFileUrlAction, updateBillDetailsAction, voidBillAction, type Result,
@@ -156,7 +157,9 @@ export function EditBill({ spaceId, bill }: { spaceId: string; bill: { id: strin
   const a = useAction();
   const router = useRouter();
   if (!open) return <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>Edit</Button>;
-  return (
+  // Drawn on <body>, not inside the page header: the header's entrance animation would otherwise trap this
+  // pop-up in the header and let the cards below cover it.
+  return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-end sm:place-items-center bg-ink/30 backdrop-blur-[2px] p-0 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-title"
       onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
       <form className="w-full sm:max-w-[480px] bg-surface rounded-t-[24px] sm:rounded-[24px] p-6 space-y-4 rise max-h-[90dvh] overflow-y-auto"
@@ -181,6 +184,7 @@ export function EditBill({ spaceId, bill }: { spaceId: string; bill: { id: strin
           ) : <button type="button" className="text-[14px] text-error hover:underline underline-offset-4" onClick={() => setConfirmVoid(true)}>Void this bill…</button>}
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
