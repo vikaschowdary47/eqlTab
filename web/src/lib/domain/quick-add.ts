@@ -217,13 +217,19 @@ export function resolveQuickAdd(d: QuickDraft, members: QuickMember[]): Resolved
 }
 
 /** Validates the AI's JSON into a QuickDraft. Anything off-schema is rejected, never guessed. */
-export function draftFromModel(raw: unknown): QuickDraft | null {
+export function draftFromModel(raw: unknown, message?: string): QuickDraft | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
+  // The model says this isn't about a shared expense at all ("write me a hello world python code").
+  if (o.is_expense === false) return null;
+  // Every amount must be a number the person actually typed. The model only reads: it never supplies a figure.
+  const typed = message === undefined ? null : new Set((message.match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => Number(n.replace(/,/g, ""))));
+  const typedAmount = (v: unknown) => typed === null || (typeof v === "string" && typed.has(Number(v)));
   const str = (v: unknown, max: number) => (typeof v === "string" && v.trim().length > 0 && v.length <= max ? v.trim() : null);
   const money = (v: unknown) => (typeof v === "string" && /^\d+(\.\d{1,2})?$/.test(v.trim()) ? v.trim() : null);
-  const amount = o.amount === null ? null : money(o.amount);
+  let amount = o.amount === null ? null : money(o.amount);
   if (o.amount !== null && amount === null) return null;
+  if (amount !== null && !typedAmount(amount)) amount = null; // not in the message: ask the person instead of trusting it
   const category = QUICK_CATEGORIES.includes(o.category as QuickCategory) ? (o.category as QuickCategory) : "other";
   const payer = str(o.payer, 80) ?? "me";
   let participants: "all" | string[] = "all";
@@ -237,7 +243,7 @@ export function draftFromModel(raw: unknown): QuickDraft | null {
     for (const f of o.fixed_shares) {
       const name = str((f as Record<string, unknown>)?.name, 80);
       const amt = money((f as Record<string, unknown>)?.amount);
-      if (!name || !amt) return null;
+      if (!name || !amt || !typedAmount(amt)) return null;
       fixedShares.push({ name, amount: amt });
     }
   }
@@ -248,7 +254,7 @@ export function draftFromModel(raw: unknown): QuickDraft | null {
       const gr = g as Record<string, unknown>;
       const amt = money(gr?.amount);
       const people = Array.isArray(gr?.people) ? gr.people.map((n) => str(n, 80)).filter((n): n is string => !!n) : [];
-      if (!amt || people.length === 0 || people.length !== (gr.people as unknown[]).length) return null;
+      if (!amt || !typedAmount(amt) || people.length === 0 || people.length !== (gr.people as unknown[]).length) return null;
       groups.push({ amount: amt, people });
     }
   }

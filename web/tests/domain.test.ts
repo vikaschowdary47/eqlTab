@@ -3,6 +3,8 @@ import { parseDollars, formatUSD } from "@/lib/domain/money";
 import { splitBill, percentToBps } from "@/lib/domain/split";
 import { memberTotals, splitPosition, reportableCents, type SplitLike } from "@/lib/domain/balances";
 import { dueState } from "@/lib/domain/due";
+import { newBillEmail, reminderEmail, dueSoonEmail } from "@/lib/domain/email-templates";
+import { daysUntil, shouldSendDueReminder } from "@/lib/domain/reminders";
 import { extractStatement, maskForAi, mergeWithAi, statementFromEmailAi, statementKey, toISODate } from "@/lib/domain/statement";
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => ({ memberId: `m${i}` }));
@@ -203,5 +205,39 @@ describe("AI reading of emailed bills", () => {
     expect(m.amountDueCents.value).toBe(29223); // the gap is filled
     expect(m.needsReview).toBe(true);
     expect(m.reasons[0]).toContain("read by AI");
+  });
+});
+
+describe("emails and due-date reminders", () => {
+  it("builds emails about one person's share, with a link and no markup injection", () => {
+    const e = newBillEmail({ payerName: "<b>Sam</b>\nBcc: x@y.z", billTitle: "Gas", shareCents: 5845, dueDate: "2026-11-16", spaceName: "26 Bagley", url: "https://eqltab.com/s/1/bills/2" });
+    expect(e.subject).not.toMatch(/[\r\n]/);
+    expect(e.text).toContain("$58.45");
+    expect(e.text).toContain("https://eqltab.com/s/1/bills/2");
+    expect(e.html).not.toContain("<b>Sam</b>");
+    expect(e.html).toContain("&lt;b&gt;Sam&lt;/b&gt;");
+    expect(reminderEmail({ fromName: "Sam", billTitle: "Gas", owedCents: 5845, dueDate: null, url: "u" }).subject).toContain("$58.45");
+    expect(dueSoonEmail({ billTitle: "Gas", owedCents: 100, daysLeft: 1, dueDate: "2026-11-16", payerName: "Sam", url: "u" }).subject).toContain("tomorrow");
+    expect(dueSoonEmail({ billTitle: "Gas", owedCents: 100, daysLeft: 0, dueDate: "2026-11-16", payerName: "Sam", url: "u" }).subject).toContain("today");
+  });
+  it("counts days between dates", () => {
+    expect(daysUntil("2026-11-16", "2026-11-14")).toBe(2);
+    expect(daysUntil("2026-11-16", "2026-11-16")).toBe(0);
+    expect(daysUntil("2026-12-01", "2026-11-30")).toBe(1);
+  });
+  const split = (over: Partial<{ memberId: string; amountCents: number; settlements: { amountCents: number; status: "reported" | "confirmed" }[] }> = {}) =>
+    ({ id: "s", memberId: "b", payerMemberId: "a", amountCents: 5845, settlements: [], ...over });
+  it("reminds only on the person's chosen days, with defaults 5, 2 and 1", () => {
+    expect(shouldSendDueReminder({ split: split(), daysLeft: 2, reminderDays: null, optOut: false })).toBe(true);
+    expect(shouldSendDueReminder({ split: split(), daysLeft: 3, reminderDays: null, optOut: false })).toBe(false);
+    expect(shouldSendDueReminder({ split: split(), daysLeft: 3, reminderDays: [3], optOut: false })).toBe(true);
+    expect(shouldSendDueReminder({ split: split(), daysLeft: 0, reminderDays: [0], optOut: false })).toBe(true);
+  });
+  it("does not remind the payer, someone who opted out, someone who paid, or someone who already reported paying", () => {
+    expect(shouldSendDueReminder({ split: split({ memberId: "a" }), daysLeft: 2, reminderDays: null, optOut: false })).toBe(false);
+    expect(shouldSendDueReminder({ split: split(), daysLeft: 2, reminderDays: null, optOut: true })).toBe(false);
+    expect(shouldSendDueReminder({ split: split({ settlements: [{ amountCents: 5845, status: "confirmed" }] }), daysLeft: 2, reminderDays: null, optOut: false })).toBe(false);
+    expect(shouldSendDueReminder({ split: split({ settlements: [{ amountCents: 5845, status: "reported" }] }), daysLeft: 2, reminderDays: null, optOut: false })).toBe(false);
+    expect(shouldSendDueReminder({ split: split(), daysLeft: -1, reminderDays: [1], optOut: false })).toBe(false);
   });
 });

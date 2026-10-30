@@ -5,6 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { signOutAction } from "@/lib/actions";
 import { Card, buttonClass } from "@/components/ui";
 import { DisplayName, Invites, Members, Notifications, SpaceDetails } from "@/components/space-settings";
+import { emailEnabled } from "@/lib/email";
 import { ImportBanner } from "@/components/import/import-banner";
 import { UtilityHolders, type HolderRow } from "@/components/utility-holders";
 
@@ -79,7 +80,7 @@ export default async function SpacePage({ params, searchParams }: { params: Prom
 
       {ctx.me && (
         <Section id="notifications" title="Notifications" desc="Only for you, in this Space.">
-          <Notifications spaceId={spaceId} prefs={prefs ?? { bill_arrival: true, reminder_days: [5, 2, 1], reminders_opt_out: false }} />
+          <Notifications spaceId={spaceId} emailOn={emailEnabled()} prefs={prefs ?? { bill_arrival: true, reminder_days: [5, 2, 1], reminders_opt_out: false }} />
         </Section>
       )}
 

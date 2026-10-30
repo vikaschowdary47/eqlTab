@@ -192,7 +192,7 @@ export function Invites({ spaceId, spaceName, invites }: { spaceId: string; spac
   );
 }
 
-export function Notifications({ spaceId, prefs }: { spaceId: string; prefs: { bill_arrival: boolean; reminder_days: number[]; reminders_opt_out: boolean } }) {
+export function Notifications({ spaceId, prefs, emailOn = false }: { spaceId: string; emailOn?: boolean; prefs: { bill_arrival: boolean; reminder_days: number[]; reminders_opt_out: boolean } }) {
   const [arrival, setArrival] = useState(prefs.bill_arrival);
   const [days, setDays] = useState<number[]>(prefs.reminder_days);
   const [optOut, setOptOut] = useState(prefs.reminders_opt_out);
@@ -214,7 +214,9 @@ export function Notifications({ spaceId, prefs }: { spaceId: string; prefs: { bi
         </div>
       </fieldset>
       <Toggle id="n-opt" label="Don't let members send me reminders" checked={optOut} onChange={setOptOut} />
-      <p className="text-[13px] text-muted">Email delivery isn't switched on during the beta. Reminders show in the app, and the person you owe can share a reminder link with you.</p>
+      <p className="text-[13px] text-muted">{emailOn
+        ? "Emails go to people who have joined, about their own share only. People who haven't joined yet get a personal link instead."
+        : "Email delivery isn't switched on yet. Reminders show in the app, and the person you owe can share a reminder link with you."}</p>
       <div className="flex items-center gap-3"><Button loading={r.pending}>Save preferences</Button>{r.ok && <span role="status" className="text-[14px] text-success">Saved</span>}</div>
     </form>
   );

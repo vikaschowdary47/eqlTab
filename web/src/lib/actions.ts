@@ -7,12 +7,13 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { splitBill, type ShareInput, type SplitMethod } from "@/lib/domain/split";
+import { emailReminder, notifyNewBill } from "@/lib/notify";
 import { SPACE_TYPES } from "@/lib/domain/spaces";
 import { extractStatement, statementFromVision, statementKey, type Extraction } from "@/lib/domain/statement";
 import { extractQuickAdd, extractReceipt, extractStatementFromImage, sniffImageType } from "@/lib/import/extract";
 import { draftFromModel, type QuickDraft } from "@/lib/domain/quick-add";
 import { receiptFromModel, type Receipt } from "@/lib/domain/receipt";
-import { getSpaceContext } from "@/lib/data";
+import { getSpaceContext, getUser } from "@/lib/data";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { gmailAccessToken, listBillLikeHeaders } from "@/lib/gmail-api";
 import { DISCOVERY_QUERY, OTHER_STATE, STATES, groupBillSenders, parseSources, type BillSource, type DiscoveredSender } from "@/lib/domain/providers";
@@ -276,6 +277,7 @@ export async function createBillAction(input: BillInput): Promise<Result<{ id: s
     p_shares: split.shares.map((s) => ({ member_id: s.memberId, amount_cents: s.amountCents })), p_client_request_id: d.clientRequestId,
   });
   if (error) return { ok: false, error: friendly(error) };
+  await notifyNewBill(data as string);
   revalidatePath(`/s/${d.spaceId}`, "layout");
   return { ok: true, data: { id: data as string } };
 }
@@ -337,7 +339,10 @@ export async function resolveDisputeAction(spaceId: string, splitId: string) {
   return simpleRpc(spaceId, "resolve_split_dispute", { p_split: splitId });
 }
 export async function sendReminderAction(spaceId: string, splitId: string) {
-  return simpleRpc(spaceId, "send_reminder", { p_split: splitId });
+  const r = await simpleRpc(spaceId, "send_reminder", { p_split: splitId });
+  // The database allowed it (payer only, once a day): also email the person if they have joined.
+  if (r.ok) await emailReminder(splitId, (await getUser())?.id ?? null);
+  return r;
 }
 export async function reportUtilityPaidAction(spaceId: string, billId: string) {
   return simpleRpc(spaceId, "report_utility_paid", { p_bill: billId });
@@ -417,6 +422,7 @@ export async function publishStatementAction(input: {
     p_client_request_id: input.clientRequestId,
   });
   if (error) return { ok: false, error: friendly(error) };
+  await notifyNewBill(data as string);
   revalidatePath(`/s/${input.spaceId}`, "layout");
   return { ok: true, data: { billId: data as string } };
 }
@@ -550,7 +556,7 @@ export async function quickAddAiAction(spaceId: string, message: string): Promis
   const started = await startAiRequest("quick_add");
   if (!started.ok) return started;
   const { raw, usage } = await extractQuickAdd(text);
-  const draft = draftFromModel(raw);
+  const draft = draftFromModel(raw, text);
   await finishAiRequest(started.data, usage, !!draft);
   if (!draft) return { ok: false, error: "We couldn't understand that. Try \"what, amount, who\", like \"dinner 60 with Raj\"." };
   return { ok: true, data: draft };

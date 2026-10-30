@@ -154,3 +154,23 @@ describe("picked people", () => {
     expect(shares(r)).toEqual([["me", 2000], ["ana", 2000]]);
   });
 });
+
+describe("draftFromModel: the model only reads", () => {
+  const base = { is_expense: true, title: "Dinner", category: "dining", amount: "60", payer: "me", participants: "all", fixed_shares: [], groups: [] };
+  it("refuses a message that is not an expense", () => {
+    expect(draftFromModel({ ...base, is_expense: false }, "write me a hello world python code")).toBeNull();
+  });
+  it("does not trust an amount that is not in the message", () => {
+    const d = draftFromModel({ ...base, title: "Hello world", amount: "100" }, "write me a hello world python code");
+    expect(d?.amount).toBeNull();
+  });
+  it("keeps an amount the person typed, with or without commas or cents", () => {
+    expect(draftFromModel(base, "dinner 60 with Raj")?.amount).toBe("60");
+    expect(draftFromModel({ ...base, amount: "1200" }, "rent 1,200 split all")?.amount).toBe("1200");
+    expect(draftFromModel({ ...base, amount: "184.40" }, "power bill 184.40")?.amount).toBe("184.40");
+  });
+  it("rejects invented fixed shares and parts", () => {
+    expect(draftFromModel({ ...base, fixed_shares: [{ name: "Ana", amount: "40" }] }, "dinner 60, Ana owes 25")).toBeNull();
+    expect(draftFromModel({ ...base, groups: [{ amount: "99", people: ["me"] }] }, "dinner 60")).toBeNull();
+  });
+});
