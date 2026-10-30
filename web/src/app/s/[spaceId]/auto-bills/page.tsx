@@ -9,6 +9,7 @@ import { CopyField } from "@/components/copy-field";
 import { ForwardingGuide } from "@/components/forwarding-guide";
 import { Card, Chip, Notice, SectionTitle } from "@/components/ui";
 import { GmailConnect } from "@/components/gmail-connect";
+import { RefreshBills } from "@/components/refresh-bills";
 import { BillSources } from "@/components/bill-sources";
 import type { BillSource } from "@/lib/domain/providers";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -39,7 +40,10 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
     <div className="space-y-6 max-w-[920px]">
       <header className="rise">
         <Link href={`/s/${spaceId}/bills`} className="inline-flex items-center gap-2 text-[14px] font-medium text-ink-2 hover:text-ink transition-colors">← <span>Bills</span></Link>
-        <h1 className="mt-3 text-[clamp(28px,5vw,40px)] font-semibold tracking-[-0.05em] leading-none">Auto Bills<span className="text-brand-strong">.</span></h1>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <h1 className="text-[clamp(28px,5vw,40px)] font-semibold tracking-[-0.05em] leading-none">Auto Bills<span className="text-brand-strong">.</span></h1>
+          <RefreshBills />
+        </div>
         <p className="text-ink-2 mt-2 max-w-[60ch] text-[15px] leading-6">Bills arrive here. We read the provider, amount and due date, you check them, then everyone sees their share.</p>
       </header>
 
