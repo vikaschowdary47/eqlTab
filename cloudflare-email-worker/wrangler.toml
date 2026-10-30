@@ -1,0 +1,10 @@
+name = "eqltab-inbound-email"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+# Email Routing runs this Worker, so it needs no public workers.dev address.
+workers_dev = false
+
+[vars]
+# Where the app receives forwarded bills. Change to your real site (the deployed app, not localhost).
+WEBHOOK_URL = "https://eqltab.com/api/inbound/email"
+# WEBHOOK_SECRET is a secret, not a variable: run `npx wrangler secret put WEBHOOK_SECRET`.
