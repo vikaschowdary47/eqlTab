@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
-import { splitBill, type ShareInput } from "@/lib/domain/split";
+import { splitBill, type ShareInput, type SplitMethod } from "@/lib/domain/split";
 import { SPACE_TYPES } from "@/lib/domain/spaces";
 import { extractStatement, statementFromVision, statementKey, type Extraction } from "@/lib/domain/statement";
 import { extractQuickAdd, extractReceipt, extractStatementFromImage, sniffImageType } from "@/lib/import/extract";
@@ -280,11 +280,23 @@ export async function createBillAction(input: BillInput): Promise<Result<{ id: s
   return { ok: true, data: { id: data as string } };
 }
 
-export async function updateBillDetailsAction(spaceId: string, billId: string, input: { version: number; title: string; category: string; dueDate: string | null; note: string }): Promise<Result> {
+/**
+ * Edits a bill. The amount and split are sent only when they changed; the split is worked out here with the
+ * same domain code as a new bill, and the database refuses it once a payment has been recorded.
+ */
+export async function updateBillDetailsAction(spaceId: string, billId: string, input: { version: number; title: string; category: string; dueDate: string | null; note: string; amountCents?: number; method?: SplitMethod; participants?: ShareInput[] }): Promise<Result> {
   const supabase = await supabaseServer();
-  const { error } = await supabase.rpc("update_bill", {
-    p_bill: billId, p_version: input.version, p_title: input.title, p_category: input.category, p_due_date: input.dueDate || null, p_note: input.note,
-  });
+  const args: Record<string, unknown> = { p_bill: billId, p_version: input.version, p_title: input.title, p_category: input.category, p_due_date: input.dueDate || null, p_note: input.note };
+  if (input.amountCents !== undefined) {
+    if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) return { ok: false, error: "Enter an amount above $0." };
+    if (!input.method || !input.participants?.length) return { ok: false, error: "Pick who shares this bill." };
+    const split = splitBill(input.amountCents, input.method, input.participants);
+    if (!split.ok) return { ok: false, error: split.error };
+    args.p_amount_cents = input.amountCents;
+    args.p_split_method = input.method;
+    args.p_shares = split.shares.map((x) => ({ member_id: x.memberId, amount_cents: x.amountCents }));
+  }
+  const { error } = await supabase.rpc("update_bill", args);
   if (error) return { ok: false, error: friendly(error) };
   revalidatePath(`/s/${spaceId}`, "layout");
   return { ok: true, data: undefined };

@@ -51,7 +51,12 @@ export default async function BillPage({ params, searchParams }: { params: Promi
             {bill.disputed && <Chip tone="error">Disputed</Chip>}
           </div>
         </div>
-        {canEdit && <EditBill spaceId={spaceId} bill={{ id: bill.id, version: bill.version, title: bill.title, category: bill.category, due_date: bill.due_date, note: bill.note, locked }} />}
+        {canEdit && <EditBill spaceId={spaceId} bill={{
+          id: bill.id, version: bill.version, title: bill.title, category: bill.category, due_date: bill.due_date, note: bill.note, locked, leftSplit: bill.splits.some((x) => !ctx.active.some((m) => m.id === x.member.id)),
+          amountCents: bill.amount_cents, method: bill.split_method, payerId: bill.payer.id,
+          members: ctx.active.map((m) => ({ id: m.id, name: m.placeholder ? `${m.name} (not joined)` : m.name, isMe: m.id === ctx.me?.id })),
+          shares: bill.splits.map((x) => ({ memberId: x.member.id, amountCents: x.amount_cents })),
+        }} />}
       </header>
 
       <Card className="p-6 sm:p-8 rise-2">

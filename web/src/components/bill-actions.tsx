@@ -10,6 +10,8 @@ import {
 import { centsToInput, formatUSD, parseDollars } from "@/lib/domain/money";
 import { CATEGORY_LABEL } from "./status";
 import { Button, Field, Input, Notice, Select } from "./ui";
+import { SplitEditor, useSplit, type SplitMember } from "./split-editor";
+import type { SplitMethod } from "@/lib/domain/split";
 import { CopyField } from "./copy-field";
 import { uuid } from "@/lib/uuid";
 import { APP_NAME } from "@/lib/brand";
@@ -147,23 +149,47 @@ export function ViewStatement({ path }: { path: string }) {
   );
 }
 
-export function EditBill({ spaceId, bill }: { spaceId: string; bill: { id: string; version: number; title: string; category: string; due_date: string | null; note: string | null; locked: boolean } }) {
+export function EditBill({ spaceId, bill }: { spaceId: string; bill: { id: string; version: number; title: string; category: string; due_date: string | null; note: string | null; locked: boolean; leftSplit: boolean; amountCents: number; method: SplitMethod; payerId: string; members: SplitMember[]; shares: { memberId: string; amountCents: number }[] } }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(bill.title);
   const [category, setCategory] = useState(bill.category);
   const [due, setDue] = useState(bill.due_date ?? "");
   const [note, setNote] = useState(bill.note ?? "");
+  const [amount, setAmount] = useState(centsToInput(bill.amountCents));
   const [confirmVoid, setConfirmVoid] = useState(false);
+  const cents = parseDollars(amount);
+  // Start from the saved split. A percentage split is shown as exact amounts: the shares are what is stored.
+  const split = useSplit(bill.members, cents, bill.method === "equal" ? "equal" : "exact", {
+    method: bill.method === "equal" ? "equal" : "exact",
+    selected: bill.shares.map((x) => x.memberId),
+    amounts: Object.fromEntries(bill.shares.map((x) => [x.memberId, centsToInput(x.amountCents)])),
+  });
   const a = useAction();
   const router = useRouter();
   if (!open) return <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>Edit</Button>;
+
+  const fixed = bill.locked || bill.leftSplit;
+  const splitOk = !!split.result && split.result.ok;
+  const changed = !fixed && cents !== null && (
+    cents !== bill.amountCents ||
+    !splitOk ||
+    split.result!.ok && (split.result!.shares.length !== bill.shares.length ||
+      split.result!.shares.some((x) => bill.shares.find((o) => o.memberId === x.memberId)?.amountCents !== x.amountCents))
+  );
+  const blocked = !fixed && (cents === null || cents <= 0 || !splitOk);
+  function save() {
+    a.run(() => updateBillDetailsAction(spaceId, bill.id, {
+      version: bill.version, title, category, dueDate: due || null, note,
+      ...(changed && cents !== null ? { amountCents: cents, method: split.method, participants: split.inputs } : {}),
+    }), () => setOpen(false));
+  }
   // Drawn on <body>, not inside the page header: the header's entrance animation would otherwise trap this
   // pop-up in the header and let the cards below cover it.
   return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-end sm:place-items-center bg-ink/30 backdrop-blur-[2px] p-0 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-title"
       onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
-      <form className="w-full sm:max-w-[480px] bg-surface rounded-t-[24px] sm:rounded-[24px] p-6 space-y-4 rise max-h-[90dvh] overflow-y-auto"
-        onSubmit={(e) => { e.preventDefault(); a.run(() => updateBillDetailsAction(spaceId, bill.id, { version: bill.version, title, category, dueDate: due || null, note }), () => setOpen(false)); }}>
+      <form className="w-full sm:max-w-[560px] bg-surface rounded-t-[24px] sm:rounded-[24px] p-6 space-y-4 rise max-h-[90dvh] overflow-y-auto"
+        onSubmit={(e) => { e.preventDefault(); if (!blocked) save(); }}>
         <h2 id="edit-title" className="text-[20px] font-semibold tracking-[-0.02em]">Edit bill</h2>
         {a.error && <Notice tone="error" title={a.error} />}
         <Field label="Title" htmlFor="e-title"><Input id="e-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} autoFocus /></Field>
@@ -171,9 +197,25 @@ export function EditBill({ spaceId, bill }: { spaceId: string; bill: { id: strin
           <Field label="Category" htmlFor="e-cat"><Select id="e-cat" value={category} onChange={(e) => setCategory(e.target.value)}>{Object.entries(CATEGORY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
           <Field label="Due date" htmlFor="e-due"><Input id="e-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
         </div>
+        <Field label="Amount" htmlFor="e-amount" hint={bill.locked ? "Locked: a payment has been recorded." : bill.leftSplit ? "Locked: someone in this split has left the Space." : undefined}>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true">$</span>
+            <Input id="e-amount" inputMode="decimal" autoComplete="off" className="pl-7" value={amount} disabled={fixed} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} />
+          </div>
+        </Field>
+        {!fixed && (
+          <>
+            <SplitEditor s={split} payerId={bill.payerId} />
+            {splitOk ? (
+              <ul className="text-[14px] text-ink-2 grid gap-1">
+                {split.result!.ok && split.result!.shares.map((x) => <li key={x.memberId} className="flex justify-between"><span>{bill.members.find((m) => m.id === x.memberId)?.isMe ? "You" : bill.members.find((m) => m.id === x.memberId)?.name}</span><span className="num">{formatUSD(x.amountCents)}</span></li>)}
+              </ul>
+            ) : cents !== null && cents > 0 && split.result && !split.result.ok ? <p className="text-[13px] text-error">{split.result.error}</p> : null}
+          </>
+        )}
         <Field label="Note" htmlFor="e-note"><textarea id="e-note" className={textarea} rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
-        <p className="text-[13px] text-muted">{bill.locked ? "The amount and shares are locked because a payment has been recorded." : "To change the amount or shares, void this bill and add it again."} Every edit is recorded in the bill's history.</p>
-        <div className="flex gap-2 pt-1"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button className="flex-1" loading={a.pending}>Save changes</Button></div>
+        <p className="text-[13px] text-muted">{bill.locked ? "The amount and shares are locked because a payment has been recorded. To change them, void this bill and add it again." : bill.leftSplit ? "The amount and shares are locked because someone in this split has left the Space. To change them, void this bill and add it again." : "Changing the amount or shares resets what each person owes."} Every edit is recorded in the bill's history.</p>
+        <div className="flex gap-2 pt-1"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button className="flex-1" loading={a.pending} disabled={blocked}>Save changes</Button></div>
         <div className="border-t border-line pt-4">
           {confirmVoid ? (
             <div className="space-y-2">
