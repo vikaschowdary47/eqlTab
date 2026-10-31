@@ -78,7 +78,7 @@ export function SplitEditor({ s, payerId }: { s: SplitState; payerId: string }) 
         <div className="grid grid-cols-3 gap-1 p-1 rounded-[14px] bg-sunken ring-1 ring-line">
           {METHODS.map((m) => (
             <label key={m.key} className={cx("relative grid place-items-center h-10 rounded-[10px] text-[14px] cursor-pointer transition-all",
-              s.method === m.key ? "bg-surface font-medium shadow-[0_1px_3px_rgba(11,26,24,0.12)]" : "text-ink-2 hover:text-ink")}>
+              s.method === m.key ? "bg-surface font-medium shadow-[0_1px_3px_rgba(26,25,24,0.12)]" : "text-ink-2 hover:text-ink")}>
               <input type="radio" name="method" value={m.key} checked={s.method === m.key} onChange={() => s.setMethod(m.key)} className="sr-only" />
               {m.label}
             </label>

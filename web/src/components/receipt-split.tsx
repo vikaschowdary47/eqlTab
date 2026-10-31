@@ -159,7 +159,7 @@ export function ReceiptSplit({ spaceId, today, members, meId, isOwner, initialRe
               return (
                 <button key={m.id} type="button" role="radio" aria-checked={on} onClick={() => { setFocusPerson(on ? null : m.id); setOpenItem(null); }}
                   className={cx("shrink-0 inline-flex items-center gap-2 h-11 pl-1 pr-4 rounded-full text-[14px] font-medium transition-all active:scale-95",
-                    on ? "bg-ink text-white shadow-[0_6px_16px_-8px_rgba(33,58,50,.7)]" : "bg-surface ring-1 ring-line hover:ring-ink/30")}>
+                    on ? "bg-ink text-white shadow-[0_6px_16px_-8px_rgba(26,25,24,.7)]" : "bg-surface ring-1 ring-line hover:ring-ink/30")}>
                   <Avatar name={m.name} size={34} />{m.isMe ? "You" : m.name.split(" ")[0]}
                 </button>
               );

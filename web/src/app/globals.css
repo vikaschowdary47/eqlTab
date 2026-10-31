@@ -5,31 +5,32 @@
   serif figures for money, Geist for everything else.
 */
 :root {
-  --ground: #fffaf5;
-  --surface: #fffdf9;
-  --sunken: #f4f1ea;
-  --ink: #213a32;
-  --ink-2: #42574f;
-  --muted: #697a72;
-  --line: #e6e2d8;
-  --line-strong: #cfd4cc;
-  /* Brand: change these four to re-colour the app (also theme_color in app/manifest.ts).
-     --brand is the logo colour. White text on it is only 2.99:1, so text and UI use the darker steps. */
-  --brand: #f56f73;
-  --brand-strong: #e2535c;
-  --brand-ink: #b53b43;
-  --brand-wash: #fff0ed;
-  --rind: #d8eda4;
-  --seed: #213a32;
-  --brand-dark-bg: #213a32;
+  /* v6.1 palette: warm neutrals and the logo's coral. No green. */
+  --ground: #f3f3f1;
+  --surface: #ffffff;
+  --sunken: #ecebe8;
+  --ink: #1a1918;
+  --ink-2: #3d3a37;
+  --muted: #67635f;
+  --line: #e4e2de;
+  --line-strong: #cfccc7;
+  /* Brand: the logo coral (also theme_color in app/manifest.ts).
+     White text on #f26b5b is under 4.5:1, so text and UI use the darker steps. */
+  --brand: #f26b5b;
+  --brand-strong: #e0503f;
+  --brand-ink: #a63a2b;
+  --brand-wash: #fde8e5;
+  --rind: #fde8e5;
+  --seed: #1a1918;
+  --brand-dark-bg: #1a1918;
   --success: #15803d;
   --success-wash: #e8f5ec;
   --warning: #b45309;
   --warning-wash: #fdf3e5;
   --error: #b91c1c;
   --error-wash: #fbebeb;
-  --night: #213a32;
-  --night-2: #315248;
+  --night: #1a1918;
+  --night-2: #2e2b29;
   --ease: cubic-bezier(0.2, 0.75, 0.1, 1);
 }
 
@@ -83,7 +84,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Heikei-inspired atmosphere: abstract forms are decoration, never information. */
+/* Soft coral atmosphere: abstract forms are decoration, never information. */
 .auto-bills-stage { isolation: isolate; }
 .heikei-shell {
   position: relative;
@@ -99,7 +100,7 @@ body {
   top: -10rem;
   right: -12rem;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(216,237,164,.42), rgba(216,237,164,0) 68%);
+  background: radial-gradient(ellipse at center, rgba(242,107,91,.10), rgba(242,107,91,0) 68%);
   pointer-events: none;
 }
 .heikei-shell::after {
@@ -111,7 +112,7 @@ body {
   bottom: 8rem;
   left: -14rem;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(245,111,115,.1), rgba(245,111,115,0) 70%);
+  background: radial-gradient(ellipse at center, rgba(242,107,91,.1), rgba(242,107,91,0) 70%);
   pointer-events: none;
 }
 .watermelon-rule { height: 3px; width: 3rem; border-radius: 999px; background: var(--brand); }
@@ -137,14 +138,14 @@ body {
   top: 1rem;
   background: var(--rind);
   transform: rotate(-16deg);
-  box-shadow: -8rem 7rem 0 -2.5rem rgba(245, 111, 115, .22);
+  box-shadow: -8rem 7rem 0 -2.5rem rgba(242, 107, 91, .22);
 }
 .heikei-art::after {
   width: 16rem;
   height: 7rem;
   left: -5rem;
   top: 10rem;
-  background: rgba(245, 111, 115, .16);
+  background: rgba(242, 107, 91, .16);
   transform: rotate(18deg);
 }
 .heikei-seed {
@@ -191,7 +192,7 @@ body {
 
 @keyframes shimmer { to { background-position: -200% 0; } }
 .skeleton {
-  background: linear-gradient(90deg, var(--sunken) 25%, #e8edf0 50%, var(--sunken) 75%);
+  background: linear-gradient(90deg, var(--sunken) 25%, #e4e2de 50%, var(--sunken) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
   border-radius: 12px;

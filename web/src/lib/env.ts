@@ -11,4 +11,6 @@ export const env = {
   siteUrl: () => process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   // The domain Cloudflare Email Routing receives mail on. No "bills." prefix: Routing is set up on the root domain.
   inboundDomain: () => process.env.NEXT_PUBLIC_INBOUND_EMAIL_DOMAIN ?? APP_DOMAIN,
+  // Gmail scan shows Google's "unverified app" warning until verification, so it stays hidden unless this is "on".
+  gmailScan: () => process.env.NEXT_PUBLIC_GMAIL_SCAN === "on",
 };

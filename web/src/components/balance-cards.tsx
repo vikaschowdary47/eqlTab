@@ -24,9 +24,9 @@ export function BalanceCards({ spaceId, iOwe, owedToMe, people, nextDueLabel }: 
 
   if (oweTotal === 0 && owedTotal === 0) {
     return (
-      <section aria-label="Your balance" className="rise-2 relative overflow-hidden rounded-[24px] bg-rind/60 ring-1 ring-[#c5df8a] p-6 sm:p-8">
+      <section aria-label="Your balance" className="rise-2 relative overflow-hidden rounded-[24px] bg-rind/60 ring-1 ring-brand-strong/20 p-6 sm:p-8">
         <Confetti />
-        <p className="relative text-[14px] font-medium text-[#2f4a1c]">Your balance</p>
+        <p className="relative text-[14px] font-medium text-brand-ink">Your balance</p>
         <p className="relative mt-1 pr-14 text-[clamp(26px,5vw,34px)] font-semibold tracking-[-0.03em] text-ink">You're all settled up 🎉</p>
         <p className="relative mt-1 pr-14 text-[15px] text-ink-2">Nobody owes anybody. Enjoy it while it lasts.</p>
       </section>

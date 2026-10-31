@@ -28,7 +28,7 @@ export function Logo({ className, tone = "ink", height = 28 }: { className?: str
 /* ---------- buttons ---------- */
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "night";
 const variants: Record<Variant, string> = {
-  primary: "bg-ink text-white hover:bg-brand-ink shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,0_1px_2px_rgba(11,26,24,0.2)]",
+  primary: "bg-ink text-white hover:bg-brand-ink shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,0_1px_2px_rgba(26,25,24,0.2)]",
   secondary: "bg-surface text-ink ring-1 ring-inset ring-line-strong hover:ring-ink/40 hover:bg-sunken",
   ghost: "text-ink-2 hover:bg-sunken hover:text-ink",
   danger: "bg-surface text-error ring-1 ring-inset ring-error/30 hover:bg-error-wash",
@@ -95,7 +95,7 @@ export function Select(props: ComponentProps<"select">) {
 
 /* ---------- surfaces ---------- */
 export function Card({ className, children, as: As = "section", ...rest }: { className?: string; children: ReactNode; as?: "section" | "div" | "article" } & Record<string, unknown>) {
-  return <As {...rest} className={cx("rounded-[18px] bg-surface ring-1 ring-line shadow-[0_1px_2px_rgba(11,26,24,0.04)]", className)}>{children}</As>;
+  return <As {...rest} className={cx("rounded-[18px] bg-surface ring-1 ring-line shadow-[0_1px_2px_rgba(26,25,24,0.04)]", className)}>{children}</As>;
 }
 
 export function SectionTitle({ children, action, id }: { children: ReactNode; action?: ReactNode; id?: string }) {
@@ -123,7 +123,7 @@ export function ShareBar({ parts, tone = "light", className }: { parts: { key: s
   const total = parts.reduce((a, p) => a + p.cents, 0) || 1;
   const color = (s: string) =>
     tone === "dark"
-      ? { paid: "bg-brand", pending: "bg-brand/45 bg-[repeating-linear-gradient(135deg,transparent_0_3px,rgba(11,26,24,.35)_3px_5px)]", open: "bg-white/18", own: "bg-white/40" }[s]
+      ? { paid: "bg-brand", pending: "bg-brand/45 bg-[repeating-linear-gradient(135deg,transparent_0_3px,rgba(26,25,24,.35)_3px_5px)]", open: "bg-white/18", own: "bg-white/40" }[s]
       : { paid: "bg-brand", pending: "bg-brand/40 bg-[repeating-linear-gradient(135deg,transparent_0_3px,rgba(255,255,255,.6)_3px_5px)]", open: "bg-line-strong", own: "bg-ink-2/30" }[s];
   return (
     <div className={cx("flex h-2 w-full gap-[3px]", className)} aria-hidden="true">
@@ -219,7 +219,7 @@ export function Avatar({ name, size = 32, muted }: { name: string; size?: number
   const [bg, fg] = AVATAR_TONES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
   return (
     <span aria-hidden="true" className="inline-grid place-items-center rounded-full font-semibold shrink-0 select-none"
-      style={{ width: size, height: size, fontSize: size * 0.4, background: muted ? "var(--sunken)" : bg, color: muted ? "var(--muted)" : fg, boxShadow: muted ? undefined : "inset 0 0 0 1px rgba(33,58,50,.06)" }}>
+      style={{ width: size, height: size, fontSize: size * 0.4, background: muted ? "var(--sunken)" : bg, color: muted ? "var(--muted)" : fg, boxShadow: muted ? undefined : "inset 0 0 0 1px rgba(26,25,24,.06)" }}>
       {initials || "?"}
     </span>
   );

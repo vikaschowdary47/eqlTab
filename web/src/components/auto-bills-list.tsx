@@ -38,7 +38,7 @@ export function AutoBillsList({ statements, spaceId }: { statements: Statement[]
 
   return (
     <>
-      {removable.length > 0 && <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] bg-surface/90 px-3.5 py-3 ring-1 ring-line shadow-[0_8px_24px_rgba(33,58,50,0.04)]">
+      {removable.length > 0 && <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] bg-surface/90 px-3.5 py-3 ring-1 ring-line shadow-[0_8px_24px_rgba(26,25,24,0.04)]">
         <label className="flex items-center gap-2.5 text-[14px] font-medium text-ink-2 cursor-pointer">
           <input className="size-4 accent-brand-strong" type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all deletable statements" />
           Select all
@@ -51,7 +51,7 @@ export function AutoBillsList({ statements, spaceId }: { statements: Statement[]
           </button>}
         </div>
       </div>}
-      <Card className="divide-y divide-line overflow-hidden shadow-[0_10px_32px_rgba(33,58,50,0.05)]">
+      <Card className="divide-y divide-line overflow-hidden shadow-[0_10px_32px_rgba(26,25,24,0.05)]">
         {statements.map((s) => {
           const canDelete = deletable(s.status);
           return <div key={s.id} className="grid grid-cols-[20px_minmax(0,1fr)] sm:grid-cols-[20px_minmax(0,1fr)_auto] items-start gap-3 px-4 sm:px-5 py-4 hover:bg-sunken/60">

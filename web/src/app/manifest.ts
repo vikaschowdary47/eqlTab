@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Shared bills, split to the cent.",
     start_url: "/home",
     display: "standalone",
-    background_color: "#f8fafc",
+    background_color: "#f3f3f1",
     theme_color: "#F26B5B", // keep in sync with --brand in globals.css
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

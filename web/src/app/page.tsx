@@ -60,7 +60,7 @@ export default async function Landing() {
 
           {/* Composition: statement → obligation */}
           <figure className="relative h-[480px] sm:h-[520px] rise-2" aria-label="Example: a ComEd statement for $184.40 becomes a $46.10 share for each of four roommates">
-            <div className="absolute left-0 top-4 w-[64%] sm:w-[56%] rotate-[-4deg] rounded-[16px] bg-surface ring-1 ring-line shadow-[0_30px_60px_-30px_rgba(11,26,24,0.35)] p-5 font-mono text-[11px] text-ink-2">
+            <div className="absolute left-0 top-4 w-[64%] sm:w-[56%] rotate-[-4deg] rounded-[16px] bg-surface ring-1 ring-line shadow-[0_30px_60px_-30px_rgba(26,25,24,0.35)] p-5 font-mono text-[11px] text-ink-2">
               <div className="flex justify-between text-[12px] text-ink font-sans font-semibold"><span>ComEd</span><span className="text-muted font-normal">Statement</span></div>
               <div className="mt-4 space-y-1.5 opacity-70">
                 <div className="h-1.5 w-4/5 rounded bg-line" /><div className="h-1.5 w-3/5 rounded bg-line" /><div className="h-1.5 w-2/3 rounded bg-line" />
@@ -71,7 +71,7 @@ export default async function Landing() {
               <div className="mt-4 space-y-1.5 opacity-70"><div className="h-1.5 w-full rounded bg-line" /><div className="h-1.5 w-1/2 rounded bg-line" /></div>
             </div>
 
-            <div className="absolute right-0 bottom-0 w-[86%] sm:w-[72%] rounded-[24px] bg-night text-white p-6 sm:p-7 grain overflow-hidden shadow-[0_40px_80px_-30px_rgba(11,26,24,0.6)]">
+            <div className="absolute right-0 bottom-0 w-[86%] sm:w-[72%] rounded-[24px] bg-night text-white p-6 sm:p-7 grain overflow-hidden shadow-[0_40px_80px_-30px_rgba(26,25,24,0.6)]">
               <div aria-hidden="true" className="absolute -right-20 -top-20 size-60 rounded-full bg-brand/30 blur-3xl" />
               <div className="flex items-center justify-between text-[13px] text-white/60"><span>Maple Apartment</span><span className="rounded-full ring-1 ring-white/25 px-2 py-0.5 text-[11px] uppercase tracking-wide">Example</span></div>
               <p className="mt-6 text-[13px] text-white/60">Your share due</p>
@@ -99,7 +99,7 @@ export default async function Landing() {
               <h2 className="mt-4 max-w-[11ch] text-[clamp(42px,6vw,76px)] font-semibold leading-[.92] tracking-[-.06em]">The bill arrives. Everyone knows.</h2>
             </div>
             <div className="lg:pb-2">
-              <p className="max-w-[38ch] text-[17px] leading-7 text-white/75">Forward a statement or connect Gmail. eqlTab reads the useful details, flags what is missing, and waits for a person to confirm before the household sees a share.</p>
+              <p className="max-w-[38ch] text-[17px] leading-7 text-white/75">Forward the bill email once. eqlTab reads the useful details, flags what is missing, and waits for a person to confirm before the household sees a share.</p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <ButtonLink href="/signup" size="lg" className="bg-brand text-ink hover:bg-rind">Try Auto Bills</ButtonLink>
                 <a href="#how" className="inline-flex h-[52px] items-center px-2 text-[16px] font-medium text-white/80 underline decoration-white/25 underline-offset-8 hover:text-white">See the flow ↓</a>

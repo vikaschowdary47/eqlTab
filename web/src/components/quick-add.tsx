@@ -92,7 +92,7 @@ export function QuickAdd({ spaceId, today, members, compact }: { spaceId: string
     : `/s/${spaceId}/bills/new`;
 
   return (
-    <section id="quick-add" aria-label="Quick add" className={cx("rounded-[22px] bg-surface ring-1 ring-line shadow-[0_1px_2px_rgba(11,26,24,0.04)]", compact ? "p-3 sm:p-4" : "p-4 sm:p-6")}>
+    <section id="quick-add" aria-label="Quick add" className={cx("rounded-[22px] bg-surface ring-1 ring-line shadow-[0_1px_2px_rgba(26,25,24,0.04)]", compact ? "p-3 sm:p-4" : "p-4 sm:p-6")}>
       <form onSubmit={read} className="flex items-center gap-2">
         <label htmlFor="quick-text" className="sr-only">Type a bill</label>
         <span aria-hidden="true" className="grid place-items-center size-10 shrink-0 rounded-full bg-brand-wash text-brand-ink text-[18px]">✦</span>

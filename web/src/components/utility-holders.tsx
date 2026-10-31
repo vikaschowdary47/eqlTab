@@ -4,13 +4,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { clearUtilityHolderAction, setUtilityHolderAction } from "@/lib/actions";
 import { Button, Input, Notice, Select } from "./ui";
+import { ArtIcon, Icon } from "./icons";
 
 export const HOLDER_CATEGORIES = [
-  { id: "electricity", label: "Electricity", emoji: "⚡" },
-  { id: "gas", label: "Gas", emoji: "🔥" },
-  { id: "internet", label: "Internet", emoji: "📶" },
-  { id: "water", label: "Water", emoji: "💧" },
-  { id: "trash", label: "Trash", emoji: "🗑️" },
+  { id: "electricity", label: "Electricity", emoji: "electricity" },
+  { id: "gas", label: "Gas", emoji: "gas" },
+  { id: "internet", label: "Internet", emoji: "internet" },
+  { id: "water", label: "Water", emoji: "water" },
+  { id: "trash", label: "Trash", emoji: "trash" },
 ] as const;
 
 export type HolderRow = { category: string; memberId: string | null; name: string | null; last4: string | null };
@@ -50,7 +51,7 @@ function HolderLine({ emoji, label, row, members, onEdit }: { emoji: string; lab
   const who = row ? (member?.name ?? row.name ?? "Someone who left this Space") : null;
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[20px]" aria-hidden="true">{emoji}</span>
+      <span className="grid place-items-center size-10 shrink-0 rounded-[12px] bg-surface ring-1 ring-line" aria-hidden="true">{emoji === "trash" ? <Icon name="trash" size={20} className="text-ink-2" /> : <ArtIcon name={emoji as "electricity" | "gas" | "internet" | "water"} size={30} />}</span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] text-muted">{label}</p>
         <p className="text-[15px] font-medium truncate">

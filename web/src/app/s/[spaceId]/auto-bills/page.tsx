@@ -24,6 +24,7 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
   const done = statements.filter((s) => !open.includes(s));
   const missing = missingStatements(statements);
   const forwardingLive = !!process.env.INBOUND_WEBHOOK_SECRET && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const gmailScan = env.gmailScan();
   const address = `bills+${ctx.space.inbound_token}@${env.inboundDomain()}`;
   const sp = await searchParams;
   const { gmail: gmailStatus, count: gmailCount, got: gmailGot } = sp;
@@ -61,9 +62,9 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
       )}
 
       {ctx.me && (open.length > 0 ? (
-        <details id="add-bills" className="group rounded-[14px] ring-1 ring-line bg-surface scroll-mt-24" open={!!gmailStatus}>
+        <details id="add-bills" className="group rounded-[14px] ring-1 ring-line bg-surface scroll-mt-24" open>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[15px] font-medium">
-            <span>Add more bills<span className="ml-2 text-[13px] font-normal text-muted">forward an email, connect Gmail or upload</span></span>
+            <span>Add more bills<span className="ml-2 text-[13px] font-normal text-muted">{gmailScan ? "forward an email, connect Gmail or upload" : "forward an email or upload"}</span></span>
             <span className="text-muted transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
           </summary>
           <div className="space-y-6 px-4 pb-4">
@@ -77,10 +78,12 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
                   <p className="text-[12px] text-muted">If a provider only emails "your bill is ready", we'll ask you for the amount instead of guessing.</p>
                 </Card>
               </section>
+              {gmailScan && (
               <section aria-labelledby="gmail" className="space-y-2">
                 <div className="flex items-center justify-between"><h2 id="gmail" className="text-[16px] font-semibold tracking-[-0.01em]">Connect Gmail</h2><Chip tone={gmailConnection ? "success" : "neutral"}>{gmailConnection ? "Connected" : "Optional"}</Chip></div>
                 <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} scanStats={scanStats} companies={chosenSources.map((x) => x.name)} />
               </section>
+              )}
             </div>
 
         <section aria-labelledby="up" className="space-y-2">
@@ -101,10 +104,12 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
               <p className="text-[12px] text-muted">If a provider only emails "your bill is ready", we'll ask you for the amount instead of guessing.</p>
             </Card>
           </section>
+          {gmailScan && (
           <section aria-labelledby="gmail" className="space-y-2">
             <div className="flex items-center justify-between"><h2 id="gmail" className="text-[16px] font-semibold tracking-[-0.01em]">Connect Gmail</h2><Chip tone={gmailConnection ? "success" : "neutral"}>{gmailConnection ? "Connected" : "Optional"}</Chip></div>
             <GmailConnect spaceId={spaceId} address={gmailConnection?.gmail_address} status={gmailStatus} count={gmailCount} signedInEmail={signedInEmail} got={gmailGot} hasSources={chosenSources.length > 0} scanStats={scanStats} companies={chosenSources.map((x) => x.name)} />
           </section>
+          )}
         </div>
 
         <section aria-labelledby="up" className="space-y-2">
@@ -114,7 +119,7 @@ export default async function AutoBillsPage({ params, searchParams }: { params: 
         </>
       ))}
 
-      {ctx.me && (
+      {ctx.me && gmailScan && (
         <details id="companies" className="group rounded-[14px] ring-1 ring-line bg-surface scroll-mt-24" open={chosenSources.length === 0 && !!gmailConnection}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[15px] font-medium">
             <span>Which companies should Gmail look for?{chosenSources.length > 0 && <span className="ml-2 text-[13px] font-normal text-muted">{chosenSources.length} chosen</span>}</span>

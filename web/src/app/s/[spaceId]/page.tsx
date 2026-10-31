@@ -11,6 +11,8 @@ import { BillRow } from "@/components/bill-row";
 import { ButtonLink, Card, Chip, EmptyState, FacePile, Money, SectionTitle, ShareBar, cx } from "@/components/ui";
 import { BalanceCards } from "@/components/balance-cards";
 import { QuickAdd } from "@/components/quick-add";
+import { HomeActions } from "@/components/home-actions";
+import { env } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -47,6 +49,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
       {ctx.active.length === 1 ? "Just you so far · invite people" : `${ctx.active.length} people`}
     </Link>
   );
+  const actions = ctx.me ? <HomeActions spaceId={spaceId} address={`bills+${ctx.space.inbound_token}@${env.inboundDomain()}`} isOwner={ctx.me.role === "owner"} /> : null;
   const quick = ctx.me ? <QuickAdd spaceId={spaceId} today={today} members={ctx.active.map((m) => ({ id: m.id, name: m.name, isMe: m.id === ctx.me!.id }))} /> : null;
 
   if (bills.length === 0 && statements.length === 0) {
@@ -59,6 +62,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
           {faces}
         </header>
         {quick}
+        {actions}
         <div className="grid lg:grid-cols-[1.15fr_1fr] gap-6 items-start">
           <EmptyState
             title={`No ${preset.expenseNoun}s yet`}
@@ -113,7 +117,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
           <h1 className="text-[clamp(28px,5vw,40px)] font-semibold tracking-[-0.04em] leading-tight">{ctx.space.name}</h1>
           {faces}
         </div>
-        {attention.length > 0 && <a href="#attention" className="hidden sm:inline-flex"><Chip tone="warning">{attention.length} {attention.length === 1 ? "thing needs" : "things need"} attention</Chip></a>}
+        {attention.length > 0 && <a href="#attention" className="hidden sm:inline-flex"><Chip tone="warning">{attention.length} {attention.length === 1 ? "thing needs" : "things need"} you</Chip></a>}
       </header>
 
       {/* Signature: what you owe and what you're owed, side by side (section 21.1). */}
@@ -122,11 +126,13 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
 
       {quick}
 
+      {actions}
+
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-8 items-start">
         <div className="space-y-10 min-w-0">
           {attention.length > 0 && (
             <section id="attention" aria-labelledby="att" className="rise-3">
-              <SectionTitle id="att">Needs attention</SectionTitle>
+              <SectionTitle id="att">Needs you</SectionTitle>
               <Card className="divide-y divide-line overflow-hidden">
                 {attention.slice(0, 6).map((a) => (
                   <Link key={a.key} href={a.href} className="flex items-start gap-3.5 px-4 sm:px-5 py-4 hover:bg-sunken/60">

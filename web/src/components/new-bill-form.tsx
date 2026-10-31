@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "./icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
@@ -163,10 +164,10 @@ export function NewBillForm(props: {
 }
 
 /** Section 20.2: every add screen says which Space the bill goes to. The pill above changes it. */
-export function AddingTo({ name, emoji }: { name: string; emoji: string }) {
+export function AddingTo({ name }: { name: string; emoji?: string }) {
   return (
     <p className="inline-flex items-center gap-2 mb-3 h-8 pl-1.5 pr-3 rounded-full bg-sunken text-[13px] text-ink-2">
-      <span aria-hidden="true" className="grid place-items-center size-6 rounded-full bg-surface text-[13px]">{emoji}</span>
+      <span aria-hidden="true" className="grid place-items-center size-6 rounded-full bg-surface text-ink-2"><Icon name="home" size={14} /></span>
       Adding to <strong className="font-semibold text-ink">{name}</strong>
     </p>
   );

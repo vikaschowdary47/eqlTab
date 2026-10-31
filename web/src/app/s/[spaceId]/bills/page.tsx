@@ -72,7 +72,7 @@ export default async function BillsPage({ params, searchParams }: { params: Prom
         {FILTERS.map((x) => (
           <Link key={x.key} href={`/s/${spaceId}/bills?f=${x.key}`} aria-current={f === x.key ? "page" : undefined}
             className={cx("flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-[10px] text-[14px] whitespace-nowrap transition-all",
-              f === x.key ? "bg-surface text-ink font-medium shadow-[0_1px_3px_rgba(11,26,24,0.12)]" : "text-ink-2 hover:text-ink")}>
+              f === x.key ? "bg-surface text-ink font-medium shadow-[0_1px_3px_rgba(26,25,24,0.12)]" : "text-ink-2 hover:text-ink")}>
             {x.label}<span className={cx("num text-[12px]", x.key === "overdue" && counts.overdue > 0 ? "text-error" : "text-muted")}>{counts[x.key]}</span>
           </Link>
         ))}

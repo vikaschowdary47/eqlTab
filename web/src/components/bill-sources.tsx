@@ -3,8 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { discoverBillSendersAction, saveBillSourcesAction } from "@/lib/actions";
-import { BILL_CATEGORIES, CATEGORY_COPY, OTHER_STATE, SOURCE_EMOJI, STATE_OPTIONS, STATES, providersFor, type BillCategory, type BillSource, type DiscoveredSender } from "@/lib/domain/providers";
+import { BILL_CATEGORIES, CATEGORY_COPY, OTHER_STATE, STATE_OPTIONS, STATES, providersFor, type BillCategory, type BillSource, type DiscoveredSender } from "@/lib/domain/providers";
 import { Button, Notice, Select, Spinner, cx, inputClass } from "./ui";
+import { ArtIcon, Icon, artForBill } from "./icons";
 
 const SOMEONE_ELSE = "__other";
 const NONE = "__none";
@@ -78,7 +79,7 @@ export function BillSources({ spaceId, state: savedState, sources, gmailConnecte
           <ul className="mt-2 flex flex-wrap gap-2">
             {sources.map((s) => (
               <li key={s.category} className="inline-flex items-center gap-1.5 h-9 pl-1.5 pr-3 rounded-full bg-brand-wash/70 ring-1 ring-brand-strong/15 text-[14px] font-medium">
-                <span aria-hidden="true" className="grid place-items-center size-6 rounded-full bg-surface text-[13px]">{SOURCE_EMOJI[s.category]}</span>
+                <span aria-hidden="true" className="grid place-items-center size-6 rounded-full bg-surface"><ArtIcon name={artForBill(s.category)} size={18} /></span>
                 {s.name}
               </li>
             ))}
@@ -92,7 +93,7 @@ export function BillSources({ spaceId, state: savedState, sources, gmailConnecte
   // ---------- picking ----------
   const note = STATES[state]?.note;
   return (
-    <div className="rounded-[24px] bg-surface ring-1 ring-line shadow-[0_10px_32px_rgba(33,58,50,0.06)] overflow-hidden">
+    <div className="rounded-[24px] bg-surface ring-1 ring-line shadow-[0_10px_32px_rgba(26,25,24,0.06)] overflow-hidden">
       <div className="px-5 sm:px-7 pt-6 pb-5 bg-[linear-gradient(135deg,var(--brand-wash),transparent_70%)]">
         <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-brand-ink">Step 1 of 2</p>
         <h2 className="mt-1.5 text-[22px] font-semibold tracking-[-0.02em]">Who sends your bills?</h2>
@@ -100,7 +101,7 @@ export function BillSources({ spaceId, state: savedState, sources, gmailConnecte
       </div>
 
       <div className="divide-y divide-line">
-        <Row emoji="📍" label="Which state do you live in?" htmlFor="bs-state">
+        <Row icon={<Icon name="home" size={20} className="text-ink-2" />} label="Which state do you live in?" htmlFor="bs-state">
           <Select id="bs-state" value={state} onChange={(e) => pickState(e.target.value)} className={cx(!state && "text-muted")}>
             <option value="" disabled>Choose your state</option>
             {STATE_OPTIONS.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
@@ -112,7 +113,7 @@ export function BillSources({ spaceId, state: savedState, sources, gmailConnecte
           const list = state ? providersFor(state, c) : [];
           const ch = choices[c];
           return (
-            <Row key={c} emoji={CATEGORY_COPY[c].emoji} label={CATEGORY_COPY[c].question} htmlFor={`bs-${c}`} disabled={!state}
+            <Row key={c} icon={<ArtIcon name={artForBill(c)} size={30} />} label={CATEGORY_COPY[c].question} htmlFor={`bs-${c}`} disabled={!state}
               hint={ch.value === NONE ? "We won't look for this one." : undefined}>
               <Select id={`bs-${c}`} disabled={!state} value={ch.value}
                 onChange={(e) => setChoices((cur) => ({ ...cur, [c]: { value: e.target.value, typed: e.target.value === SOMEONE_ELSE ? cur[c].typed : "" } }))}
@@ -197,11 +198,11 @@ export function BillSources({ spaceId, state: savedState, sources, gmailConnecte
   );
 }
 
-function Row({ emoji, label, htmlFor, hint, disabled, children }: { emoji: string; label: string; htmlFor: string; hint?: string; disabled?: boolean; children: React.ReactNode }) {
+function Row({ icon, label, htmlFor, hint, disabled, children }: { icon: React.ReactNode; label: string; htmlFor: string; hint?: string; disabled?: boolean; children: React.ReactNode }) {
   return (
     <div className={cx("px-5 sm:px-7 py-4 grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-x-6 gap-y-2 sm:items-center transition-opacity", disabled && "opacity-60")}>
       <label htmlFor={htmlFor} className="flex items-center gap-3 text-[15px] font-medium">
-        <span aria-hidden="true" className="grid place-items-center size-10 shrink-0 rounded-[14px] bg-sunken text-[19px]">{emoji}</span>
+        <span aria-hidden="true" className="grid place-items-center size-10 shrink-0 rounded-[14px] bg-surface ring-1 ring-line">{icon}</span>
         {label}
       </label>
       <div className="min-w-0">

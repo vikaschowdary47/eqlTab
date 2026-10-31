@@ -16,8 +16,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   // Browser chrome: watermelon flesh in light mode, rind ink in dark mode
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F56F73" },
-    { media: "(prefers-color-scheme: dark)", color: "#213A32" },
+    { media: "(prefers-color-scheme: light)", color: "#F3F3F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#1A1918" },
   ],
   width: "device-width",
   initialScale: 1,

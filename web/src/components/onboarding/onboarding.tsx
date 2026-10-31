@@ -88,7 +88,7 @@ export function Onboarding({ firstName, hasSpaces }: { firstName: string; hasSpa
                       tabIndex={on ? 0 : -1}
                       className={cx(
                         "group flex items-center gap-4 text-left rounded-[18px] p-4 sm:p-5 bg-surface transition-all duration-300 ease-out-soft",
-                        on ? "ring-2 ring-ink shadow-[0_12px_30px_-18px_rgba(11,26,24,0.45)]" : "ring-1 ring-line hover:ring-line-strong hover:-translate-y-0.5",
+                        on ? "ring-2 ring-ink shadow-[0_12px_30px_-18px_rgba(26,25,24,0.45)]" : "ring-1 ring-line hover:ring-line-strong hover:-translate-y-0.5",
                       )}>
                       <span className={cx("grid place-items-center size-12 rounded-[14px] transition-colors", on ? "bg-ink text-white" : "bg-sunken text-ink-2")}>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{TYPE_ART[t]}</svg>
